@@ -1,4 +1,7 @@
+using System.Collections.Generic;
+using Exiled.API.Enums;
 using Exiled.API.Features;
+using Exiled.API.Features.Items;
 using UnityEngine;
 
 namespace MainCore.Drone
@@ -8,60 +11,86 @@ namespace MainCore.Drone
     /// </summary>
     internal enum DroneStage
     {
-        /// <summary>Схематик показан перед игроком, но ещё не установлен.</summary>
+        /// <summary>Схематик следует за взглядом, точка установки ещё не зафиксирована.</summary>
         Preview,
+
+        /// <summary>Дрон поставлен на землю (свет белый), ждёт второго нажатия для входа.</summary>
+        Placed,
 
         /// <summary>Игрок внутри дрона и управляет им.</summary>
         Piloting,
 
-        /// <summary>Дрон летит сам: пилот вышел или получил урон.</summary>
+        /// <summary>Дрон брошен: пилот вышел. Летит/лежит сам до истечения таймера.</summary>
         Abandoned,
     }
 
     /// <summary>
-    /// Всё состояние одного дрона: тело, пилот, скорость и то, что нужно вернуть
-    /// игроку при выходе.
+    /// Всё состояние одного дрона: тело, свет, HP, а также снимок игрока, который
+    /// нужно вернуть при выходе.
     /// </summary>
+    /// <remarks>
+    /// Управление построено по схеме «дрон следует за пилотом»: пилот летает нативным
+    /// noclip (клиент сам двигает его по WASD и взгляду), а сервер лишь ведёт модель
+    /// дрона за фактической позицией игрока. Поэтому здесь хранится
+    /// <see cref="LastPilotPosition"/> - опорная точка для расчёта пройденного за тик
+    /// пути и ограничения скорости.
+    /// </remarks>
     internal sealed class DroneSession
     {
-        /// <summary>Игрок, которому принадлежит дрон.</summary>
         internal Player Owner { get; }
 
         internal DroneStage Stage { get; set; } = DroneStage.Preview;
 
-        /// <summary>Схематик дрона. <c>null</c>, если ProjectMER его не выдал.</summary>
+        /// <summary>Схематик дрона (визуал). <c>null</c>, если ProjectMER его не выдал.</summary>
         internal Component? Body { get; set; }
 
-        /// <summary>Позиция дрона. Ведётся отдельно от схематика: схематик - только визуал.</summary>
+        /// <summary>
+        /// Источник света над дроном (красный/зелёный/белый индикатор).
+        /// Хранится как <see cref="object"/>: тип-тулза Exiled Light не наследует
+        /// Unity <see cref="Component"/>, поэтому в менеджере он приводится через
+        /// <c>is ToyLight</c>.
+        /// </summary>
+        internal object? Light { get; set; }
+
+        /// <summary>Позиция дрона. Ведётся отдельно от схематика.</summary>
         internal Vector3 Position { get; set; }
 
-        /// <summary>Направление полёта. Обновляется по камере пилота.</summary>
+        /// <summary>Направление полёта (по взгляду пилота).</summary>
         internal Vector3 Forward { get; set; } = Vector3.forward;
 
-        /// <summary>Текущая скорость в м/с. 0 - дрон падает или лежит.</summary>
-        internal float Speed { get; set; }
+        /// <summary>HP дрона. При нуле дрон взрывается.</summary>
+        internal float Health { get; set; }
 
-        /// <summary>
-        /// Дрон лежит на опоре и не двигается. Пока флаг стоит, гравитация не
-        /// применяется - это убирает дрожание "упал на пол - оттолкнулся - упал".
-        /// Сбрасывается, как только пилот снова разгоняет дрон прыжком.
-        /// </summary>
-        internal bool Grounded { get; set; }
+        /// <summary>Максимальная скорость дрона в м/с (регулируется прыжком/alt).</summary>
+        internal float SpeedLimit { get; set; }
+
+        /// <summary>Позиция пилота на прошлом тике: опора для расчёта смещения.</summary>
+        internal Vector3 LastPilotPosition { get; set; }
 
         /// <summary>Даммик, изображающий тело пилота, пока он в дроне.</summary>
         internal Npc? Dummy { get; set; }
 
-        /// <summary>Где стоял игрок до входа в дрон.</summary>
+        // ------------------------------------------------------------ снимок игрока
+
         internal Vector3 OwnerReturnPosition { get; set; }
 
-        /// <summary>Исходный масштаб игрока: в дроне он уменьшается.</summary>
         internal Vector3 OwnerOriginalScale { get; set; } = Vector3.one;
 
-        /// <summary>Был ли noclip разрешён игроку до входа в дрон.</summary>
         internal bool OwnerNoclipPermitted { get; set; }
 
-        /// <summary>Был ли noclip включён у игрока до входа в дрон.</summary>
         internal bool OwnerNoclipEnabled { get; set; }
+
+        internal float OwnerHealth { get; set; }
+
+        internal float OwnerMaxHealth { get; set; }
+
+        internal string OwnerCustomInfo { get; set; } = string.Empty;
+
+        /// <summary>Полный инвентарь пилота до входа: восстанавливается на выходе.</summary>
+        internal List<ItemType> OwnerItems { get; } = new List<ItemType>();
+
+        /// <summary>Резерв патронов пилота до входа (ключ - тип патрона как ItemType).</summary>
+        internal Dictionary<ItemType, ushort> OwnerAmmo { get; } = new Dictionary<ItemType, ushort>();
 
         internal DroneSession(Player owner) => Owner = owner;
     }

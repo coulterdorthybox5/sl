@@ -7,46 +7,48 @@ using Exiled.API.Features.Pickups.Projectiles;
 using MainCore.Destruction;
 using MainCore.Medical.Visuals;
 using MEC;
-using PlayerRoles;
 using UnityEngine;
+using ToyLight = Exiled.API.Features.Toys.Light;
 
 namespace MainCore.Drone
 {
     /// <summary>
-    /// Вся логика FPV-дрона: превью, установка, полёт, столкновения и выход пилота.
+    /// Вся логика FPV-дрона: превью, установка, полёт, столкновения, HP и выход пилота.
     /// </summary>
     /// <remarks>
-    /// Почему дрон не Rigidbody.
+    /// Ключевое решение - схема «дрон следует за пилотом».
     ///
-    /// Первая версия ракеты RPG уже показала, что физический объект с сетевой
-    /// синхронизацией дёргается: клиент интерполирует позицию, а сервер её
-    /// перезаписывает. Для камеры пилота это неприемлемо - картинка тряслась бы, как
-    /// у брошенной гранаты. Поэтому позиция дрона хранится в
-    /// <see cref="DroneSession.Position"/> и раз в кадр считается вручную:
-    /// равномерное движение вперёд плюс падение, если тяги нет. Схематик и пилот
-    /// просто ставятся в эту точку, никакой физики к ним не применяется.
+    /// Пилота переводят в noclip, и он летает сам: клиент двигает его по WASD и взгляду,
+    /// сервер в его позицию НЕ вмешивается. Раньше было наоборот - сервер каждый кадр
+    /// телепортировал игрока в точку дрона, и это дралось с клиентским noclip'ом, давая
+    /// постоянное дрожание «туда-сюда». Теперь сервер только ведёт модель дрона за
+    /// фактической позицией игрока и ограничивает максимальную скорость, изредка мягко
+    /// подтягивая пилота назад при превышении. Дрожания нет, WASD работает нативно.
     ///
-    /// Столкновения ищутся сферическим лучом по пройденному за кадр отрезку. При
-    /// скорости 25 м/с дрон проходит около 0.4 м за кадр - это больше толщины многих
-    /// стен, поэтому проверка по одной точке пропускала бы удары.
+    /// Невидимость - эффект <see cref="EffectType.Invisible"/>, а не масштаб: смена
+    /// <c>Player.Scale</c> пересоздаёт модель игрока у всех клиентов и сбрасывает камеру.
     /// </remarks>
     public static class DroneManager
     {
         /// <summary>Радиус тела дрона для поиска столкновений, в метрах.</summary>
         private const float DroneRadius = 0.25f;
 
-        /// <summary>На сколько дрон отводится от стены после несмертельного удара.</summary>
-        private const float WallClearance = 0.1f;
+        /// <summary>Отступ от поверхности после столкновения.</summary>
+        private const float WallClearance = 0.15f;
 
-        /// <summary>Слои, по которым дрон не разбивается: хитбоксы, трупы, пикапы.</summary>
-        private static readonly HashSet<string> IgnoredLayers = new HashSet<string>
-        {
-            "Hitbox",
-            "Ragdoll",
-            "Pickup",
-            "Ignore Raycast",
-            "InvisibleCollider",
-        };
+        /// <summary>Урон дрону за 1 м/с скорости удара (ТЗ: 3 HP за 1 м/с).</summary>
+        private const float CrashDamagePerSpeed = 3f;
+
+        /// <summary>Косинус, выше которого поверхность считается полом/потолком.</summary>
+        private const float FloorNormalThreshold = 0.5f;
+
+        /// <summary>Фиксированный шаг симуляции: скорость дрона не должна зависеть от FPS.</summary>
+        private const float FixedStep = 0.05f;
+
+        /// <summary>Слои, которые не считаются препятствием (хитбоксы, трупы, пикапы).</summary>
+        private static readonly int SolidMask = BuildSolidMask();
+
+        private static readonly RaycastHit[] HitBuffer = new RaycastHit[16];
 
         private static readonly Dictionary<Player, DroneSession> sessions = new Dictionary<Player, DroneSession>();
 
@@ -55,17 +57,20 @@ namespace MainCore.Drone
 
         private static Config Config => MainCorePlugin.Instance.Config;
 
-        /// <summary>Управляет ли игрок дроном прямо сейчас.</summary>
         public static bool IsPiloting(Player player)
             => player is not null
-               && sessions.TryGetValue(player, out DroneSession session)
-               && session.Stage == DroneStage.Piloting;
+               && sessions.TryGetValue(player, out DroneSession s)
+               && s.Stage == DroneStage.Piloting;
 
-        /// <summary>Показан ли игроку превью дрона, ещё не установленный.</summary>
         public static bool HasPreview(Player player)
             => player is not null
-               && sessions.TryGetValue(player, out DroneSession session)
-               && session.Stage == DroneStage.Preview;
+               && sessions.TryGetValue(player, out DroneSession s)
+               && s.Stage == DroneStage.Preview;
+
+        public static bool HasPlaced(Player player)
+            => player is not null
+               && sessions.TryGetValue(player, out DroneSession s)
+               && s.Stage == DroneStage.Placed;
 
         public static void Start()
         {
@@ -88,74 +93,65 @@ namespace MainCore.Drone
             if (flightCoroutine.IsRunning)
                 Timing.KillCoroutines(flightCoroutine);
 
-            // Копия списка: выход из дрона меняет саму коллекцию.
             foreach (DroneSession session in new List<DroneSession>(sessions.Values))
+            {
                 Release(session, "shutdown");
+                DestroyBody(session);
+            }
 
             sessions.Clear();
-            DroneLog.Step("stop", "flight loop stopped, all drones released");
+            DroneLog.Step("stop", "flight loop stopped, all drones removed");
         }
 
         // ---------------------------------------------------------------- превью
 
-        /// <summary>
-        /// Показывает схематик дрона перед игроком. Вызывается при взятии контроллера
-        /// в руках.
-        /// </summary>
-        /// <remarks>
-        /// Точка установки ищется лучом вперёд: если игрок смотрит в стену, дрон
-        /// ставится вплотную к ней, а не за ней. Затем позиция опускается на пол
-        /// лучом вниз, чтобы дрон не висел в воздухе.
-        ///
-        /// Разрешается несколько превью: каждое создаёт отдельную сессию. Игрок
-        /// может заспавнить несколько дронов и переключаться между ними.
-        /// </remarks>
+        /// <summary>Показывает превью дрона перед игроком, если у него ещё нет дрона.</summary>
         public static void ShowPreview(Player player)
         {
             if (player is null || !player.IsAlive)
                 return;
 
-            // Уже есть дрон: превью или полёт не пересоздаём (иначе повис бы второй
-            // схематик). Заброшенный дрон затираем, чтобы освободить место новому.
+            // Уже есть превью/поставленный/полёт - второй не создаём.
             if (sessions.TryGetValue(player, out DroneSession existing))
             {
-                if (existing.Stage == DroneStage.Preview || existing.Stage == DroneStage.Piloting)
+                if (existing.Stage != DroneStage.Abandoned)
                     return;
 
+                // Заброшенный дрон убираем, освобождая место под новый.
                 DestroyBody(existing);
                 sessions.Remove(player);
             }
 
-            Vector3 spot = ResolvePlacement(player);
+            Vector3 spot = ResolvePlacement(player, out _);
 
             DroneSession session = new DroneSession(player)
             {
                 Stage = DroneStage.Preview,
                 Position = spot,
                 Forward = Flatten(player.CameraTransform is null ? Vector3.forward : player.CameraTransform.forward),
+                Health = Mathf.Max(1f, Config.DroneHealth),
             };
 
             session.Body = SpawnBody(spot, session.Forward, out string error);
             if (session.Body is null)
             {
-                // Без схематика дрон бесполезен: летать было бы нечему, а игрок не
-                // увидел бы, куда он ставит машину.
                 DroneLog.Warn("preview", player, $"schematic '{Config.DroneSchematicName}' not spawned: {error}");
                 player.ShowHint("<b>FPV Drone:</b> drone model is unavailable, ask an admin.", 3f);
                 return;
             }
 
+            session.Light = SpawnLight(spot);
             sessions[player] = session;
-            player.ShowHint("<b>FPV Drone:</b> press the radio key to deploy.", 2f);
             DroneLog.Step("preview", player, $"placed at {Format(spot)}");
         }
 
-        /// <summary>Убирает превью, если игрок убрал контроллер, не установив дрон.</summary>
+        /// <summary>Убирает превью, если игрок убрал контроллер, не поставив дрон.</summary>
         public static void CancelPreview(Player player)
         {
             if (player is null || !sessions.TryGetValue(player, out DroneSession session))
                 return;
 
+            // Убираем только не установленный дрон. Поставленный/летящий остаётся.
             if (session.Stage != DroneStage.Preview)
                 return;
 
@@ -165,103 +161,104 @@ namespace MainCore.Drone
         }
 
         /// <summary>
-        /// Ищет точку установки: 2 м вперёд, но не сквозь стену, и с посадкой на пол.
+        /// Фиксирует превью на земле (Preview -> Placed). Свет становится белым.
+        /// Возвращает <c>false</c>, если поставить нельзя (нет опоры/внутри стены).
         /// </summary>
-        private static Vector3 ResolvePlacement(Player player)
+        public static bool Place(Player player)
         {
-            Transform? camera = player.CameraTransform;
-            Vector3 origin = camera is not null ? camera.position : player.Position;
-            Vector3 direction = Flatten(camera is not null ? camera.forward : Vector3.forward);
+            if (player is null || !sessions.TryGetValue(player, out DroneSession session))
+                return false;
 
-            float distance = Mathf.Max(0f, Config.DronePreviewDistance);
-            Vector3 target = origin + direction * distance;
+            if (session.Stage != DroneStage.Preview)
+                return false;
 
-            // Сферический луч, а не обычный: дрон имеет объём, и точечный луч
-            // позволил бы поставить его наполовину внутри стены.
-            if (Physics.SphereCast(origin, DroneRadius, direction, out RaycastHit forwardHit, distance))
-                target = origin + direction * Mathf.Max(0f, forwardHit.distance - WallClearance);
+            Vector3 spot = ResolvePlacement(player, out bool canPlace);
+            if (!canPlace)
+            {
+                player.ShowHint("<b>FPV Drone:</b> no room to place here.", 1.5f);
+                return false;
+            }
 
-            // Посадка на пол: дрон должен лежать на земле, а не висеть.
-            if (Physics.Raycast(target, Vector3.down, out RaycastHit floorHit, 10f))
-                target = floorHit.point + Vector3.up * DroneRadius;
-
-            return target;
+            session.Position = spot;
+            session.Stage = DroneStage.Placed;
+            MoveBody(session);
+            SetLight(session, Color.white, Config.DroneLightIntensity);
+            player.ShowHint("<b>FPV Drone:</b> press again to take control.", 2f);
+            DroneLog.Step("place", player, $"placed on ground at {Format(spot)}");
+            return true;
         }
 
-        // ---------------------------------------------------------------- вход в дрон
+        // ---------------------------------------------------------------- вход
 
-        /// <summary>
-        /// Устанавливает дрон и пересаживает игрока в него. Вызывается по ЛКМ с
-        /// контроллером в руках.
-        /// </summary>
-        /// <remarks>
-        /// Разрешён вход только в превью (Preview). Заброшенные дроны (Abandoned)
-        /// продолжают лететь сами и не могут быть перехвачены повторно - игрок
-        /// должен создать новое превью, чтобы заспавнить новый дрон.
-        /// </remarks>
+        /// <summary>Пересаживает игрока в дрон (Placed -> Piloting).</summary>
         public static void Deploy(Player player)
         {
             if (player is null || !sessions.TryGetValue(player, out DroneSession session))
                 return;
 
-            if (session.Stage != DroneStage.Preview)
+            if (session.Stage != DroneStage.Placed)
                 return;
 
-            session.Stage = DroneStage.Piloting;
-            session.Speed = 0f;
+            // Снимок игрока: вернём всё как было при выходе.
             session.OwnerReturnPosition = player.Position;
-            session.OwnerOriginalScale = player.Scale;
             session.OwnerNoclipPermitted = player.IsNoclipPermitted;
             session.OwnerNoclipEnabled = player.IsNoclipEnabled;
+            session.OwnerHealth = player.Health;
+            session.OwnerMaxHealth = player.MaxHealth;
+            session.OwnerCustomInfo = player.CustomInfo ?? string.Empty;
 
-            // Даммик занимает место игрока: со стороны тело пилота остаётся на земле.
+            session.OwnerItems.Clear();
+            foreach (Item item in player.Items)
+                session.OwnerItems.Add(item.Type);
+
+            session.OwnerAmmo.Clear();
+            foreach (KeyValuePair<ItemType, ushort> pair in player.Ammo)
+                session.OwnerAmmo[pair.Key] = pair.Value;
+
+            // Даммик занимает место игрока: тело оператора остаётся на земле.
             session.Dummy = SpawnDummy(player);
 
-            // Пилот уменьшается и переводится в noclip: карта не должна его толкать,
-            // иначе позицию дрона перебивал бы обычный контроллер движения игрока.
-            player.Scale = Vector3.one * Config.DronePilotScale;
+            // Пилот телепортируется к дрону, летает noclip'ом, становится невидимым.
+            // Масштаб НЕ трогаем: это пересоздавало бы модель и дёргало камеру.
             player.IsNoclipPermitted = true;
             player.IsNoclipEnabled = true;
             player.Position = CameraPoint(session);
+            player.EnableEffect(EffectType.Invisible, 0f, false);
+
+            session.LastPilotPosition = player.Position;
+            session.SpeedLimit = 0f;
+            session.Stage = DroneStage.Piloting;
 
             GiveDroneKit(player);
+            SetLight(session, Color.white, Config.DroneLightIntensity);
 
-            player.ShowHint("<b>FPV Drone:</b> jump to speed up, alt to slow down. Radio key returns control.", 4f);
+            player.ShowHint("<b>FPV Drone:</b> fly with WASD. Jump/Alt change max speed. Radio to exit.", 4f);
             DroneLog.Step("deploy", player, $"drone armed at {Format(session.Position)}");
         }
 
-        /// <summary>
-        /// Создаёт копию игрока на его прежнем месте.
-        /// </summary>
-        /// <remarks>
-        /// Копируются роль, ник и здоровье: даммик должен выглядеть в точности как
-        /// пилот, чтобы со стороны было видно оператора, сидящего за пультом.
-        /// </remarks>
         private static Npc? SpawnDummy(Player player)
         {
             try
             {
                 Npc dummy = Npc.Spawn(player.Nickname, player.Role.Type, false, player.Position);
-
                 dummy.Position = player.Position;
                 dummy.CustomInfo = player.CustomInfo;
                 dummy.MaxHealth = player.MaxHealth;
                 dummy.Health = player.Health;
-
-                DroneLog.Step("dummy", player, $"spawned as {player.Role.Type}");
                 return dummy;
             }
             catch (Exception exception)
             {
-                // Даммик - это косметика. Без него дрон обязан работать дальше.
                 DroneLog.Warn("dummy", player, $"spawn failed: {exception.GetType().Name}: {exception.Message}");
                 return null;
             }
         }
 
-        /// <summary>Выдаёт пилоту гранаты и рацию для возврата управления.</summary>
+        /// <summary>Выдаёт пилоту чистый набор: гранаты и рацию, очищая инвентарь.</summary>
         private static void GiveDroneKit(Player player)
         {
+            player.ClearInventory();
+
             for (int i = 0; i < Config.DroneGrenadeCount; i++)
                 player.AddItem(ItemType.GrenadeHE);
 
@@ -271,60 +268,46 @@ namespace MainCore.Drone
 
         // ---------------------------------------------------------------- управление
 
-        /// <summary>Прыжок разгоняет дрон на один шаг скорости.</summary>
+        /// <summary>Прыжок повышает предел скорости на один шаг.</summary>
         public static void Accelerate(Player player)
         {
             if (!sessions.TryGetValue(player, out DroneSession session) || session.Stage != DroneStage.Piloting)
                 return;
 
-            session.Speed = Mathf.Min(Config.DroneMaxSpeed, session.Speed + Config.DroneSpeedStep);
-
-            // Разгон снимает дрон с опоры: пока скорость есть, он летит, а не лежит.
-            session.Grounded = false;
-            DroneLog.Step("speed", player, $"up to {session.Speed:0.#} m/s");
+            session.SpeedLimit = Mathf.Min(Config.DroneMaxSpeed, session.SpeedLimit + Config.DroneSpeedStep);
+            DroneLog.Step("speed", player, $"limit up to {session.SpeedLimit:0.#} m/s");
         }
 
-        /// <summary>Alt тормозит дрон на один шаг скорости, не ниже нуля.</summary>
+        /// <summary>Alt понижает предел скорости на один шаг, не ниже нуля.</summary>
         public static void Decelerate(Player player)
         {
             if (!sessions.TryGetValue(player, out DroneSession session) || session.Stage != DroneStage.Piloting)
                 return;
 
-            session.Speed = Mathf.Max(0f, session.Speed - Config.DroneSpeedStep);
-            DroneLog.Step("speed", player, $"down to {session.Speed:0.#} m/s");
+            session.SpeedLimit = Mathf.Max(0f, session.SpeedLimit - Config.DroneSpeedStep);
+            DroneLog.Step("speed", player, $"limit down to {session.SpeedLimit:0.#} m/s");
         }
 
-        /// <summary>
-        /// Сбрасывает гранату из-под дрона, сохраняя его импульс.
-        /// </summary>
-        /// <returns><c>false</c>, если дрон лежит на земле - тогда бросок не разрешён.</returns>
+        /// <summary>Сбрасывает гранату под дрон.</summary>
         public static bool DropGrenade(Player player)
         {
             if (!sessions.TryGetValue(player, out DroneSession session) || session.Stage != DroneStage.Piloting)
                 return false;
 
-            // Лежащий дрон гранату не сбрасывает: она оказалась бы внутри пола.
-            if (session.Speed <= 0f)
-            {
-                player.ShowHint("<b>FPV Drone:</b> too low to drop a grenade.", 1.5f);
-                DroneLog.Step("grenade", player, "drop refused: drone is not flying");
-                return false;
-            }
-
             Vector3 point = session.Position + Vector3.down * Mathf.Max(0f, Config.DroneGrenadeDropOffset);
+
+            // Если под дроном сразу пол - кладём чуть выше него, чтобы граната не утонула.
+            if (Physics.Raycast(session.Position, Vector3.down, out RaycastHit floor, 3f, SolidMask, QueryTriggerInteraction.Ignore)
+                && floor.distance < Config.DroneGrenadeDropOffset)
+            {
+                point = floor.point + Vector3.up * 0.1f;
+            }
 
             try
             {
                 ExplosiveGrenade grenade = (ExplosiveGrenade)Item.Create(ItemType.GrenadeHE, player);
-                ExplosionGrenadeProjectile projectile = grenade.SpawnActive(point, player);
-
-                // Момент дрона передаётся гранате: сброшенная на ходу, она летит
-                // вперёд вместе с машиной, а не падает строго вниз.
-                Rigidbody? body = projectile.GameObject?.GetComponent<Rigidbody>();
-                if (body is not null)
-                    body.velocity = session.Forward * session.Speed;
-
-                DroneLog.Step("grenade", player, $"dropped at {Format(point)} with {session.Speed:0.#} m/s");
+                grenade.SpawnActive(point, player);
+                DroneLog.Step("grenade", player, $"dropped at {Format(point)}");
                 return true;
             }
             catch (Exception exception)
@@ -334,13 +317,60 @@ namespace MainCore.Drone
             }
         }
 
+        // ---------------------------------------------------------------- выстрел по дрону
+
+        /// <summary>
+        /// Обрабатывает выстрел игрока: если луч проходит близко к дрону - наносит урон.
+        /// Коллайдеры схематика выключены (иначе дрон «видит» себя), поэтому попадание
+        /// определяется геометрически по лучу взгляда стрелка.
+        /// </summary>
+        public static bool HandleShot(Player shooter, float damage)
+        {
+            if (shooter is null || shooter.CameraTransform is null)
+                return false;
+
+            Vector3 origin = shooter.CameraTransform.position;
+            Vector3 dir = shooter.CameraTransform.forward;
+
+            float wallDistance = float.MaxValue;
+            if (Physics.Raycast(origin, dir, out RaycastHit wall, 120f, SolidMask, QueryTriggerInteraction.Ignore))
+                wallDistance = wall.distance;
+
+            foreach (DroneSession session in sessions.Values)
+            {
+                if (session.Stage != DroneStage.Piloting && session.Stage != DroneStage.Abandoned && session.Stage != DroneStage.Placed)
+                    continue;
+
+                if (session.Owner == shooter)
+                    continue;
+
+                if (!RaySphere(origin, dir, session.Position, DroneRadius + 0.15f, out float hitDist))
+                    continue;
+
+                // Стена ближе дрона - пуля не долетела.
+                if (hitDist > wallDistance)
+                    continue;
+
+                session.Health -= damage;
+                shooter.ShowHitMarker(1f);
+                DroneLog.Step("shot", shooter, $"drone hit for {damage:0.#}, hp {session.Health:0.#}");
+
+                if (session.Health <= 0f)
+                    Explode(session, session.Position, session.Stage == DroneStage.Piloting);
+
+                return true;
+            }
+
+            return false;
+        }
+
         // ---------------------------------------------------------------- полёт
 
         private static IEnumerator<float> FlightLoop()
         {
             while (running)
             {
-                yield return Timing.WaitForOneFrame;
+                yield return Timing.WaitForSeconds(FixedStep);
 
                 if (sessions.Count == 0)
                     continue;
@@ -362,14 +392,16 @@ namespace MainCore.Drone
 
             foreach (DroneSession session in sessions.Values)
             {
-                // Превью не летает: оно просто следует за взглядом игрока.
-                if (session.Stage == DroneStage.Preview)
+                bool alive = session.Stage switch
                 {
-                    UpdatePreview(session);
-                    continue;
-                }
+                    DroneStage.Preview => TickPreview(session),
+                    DroneStage.Placed => true,
+                    DroneStage.Piloting => TickPiloting(session),
+                    DroneStage.Abandoned => true,
+                    _ => true,
+                };
 
-                if (!Advance(session))
+                if (!alive)
                 {
                     finished ??= new List<DroneSession>();
                     finished.Add(session);
@@ -383,177 +415,155 @@ namespace MainCore.Drone
                 sessions.Remove(finished[i].Owner);
         }
 
-        private static void UpdatePreview(DroneSession session)
+        private static bool TickPreview(DroneSession session)
         {
             Player owner = session.Owner;
             if (owner is null || !owner.IsAlive)
-                return;
+                return false;
 
-            session.Position = ResolvePlacement(owner);
+            Vector3 spot = ResolvePlacement(owner, out bool canPlace);
+            session.Position = spot;
             session.Forward = Flatten(owner.CameraTransform is null ? session.Forward : owner.CameraTransform.forward);
             MoveBody(session);
-        }
-
-        /// <summary>
-        /// Двигает дрон на один кадр.
-        /// </summary>
-        /// <returns><c>false</c>, если дрон прекратил существование.</returns>
-        private static bool Advance(DroneSession session)
-        {
-            Player owner = session.Owner;
-            bool piloted = session.Stage == DroneStage.Piloting;
-
-            // Пилот вышел из игры или умер - дрон продолжает лететь сам, как и задумано.
-            if (piloted && (owner is null || !owner.IsAlive))
-            {
-                DroneLog.Step("flight", owner, "pilot lost, drone keeps flying on its own");
-                Release(session, "pilot lost");
-                session.Stage = DroneStage.Abandoned;
-                piloted = false;
-            }
-
-            if (piloted && owner!.CameraTransform is not null)
-                session.Forward = owner.CameraTransform.forward;
-
-            // Дрон лежит на опоре и тяги нет - он неподвижен. Никакой гравитации,
-            // иначе он падал бы в пол, отталкивался и бесконечно дрожал вверх-вниз.
-            // Просто держим пилота на месте.
-            if (session.Grounded && session.Speed <= 0f)
-            {
-                Settle(session, piloted);
-                return true;
-            }
-
-            Vector3 from = session.Position;
-
-            // Тяга вперёд плюс падение: дрон без скорости снижается, пока не найдёт
-            // опору. Как только он её касается, HandleImpact ставит Grounded, и ветка
-            // выше замораживает его на месте.
-            Vector3 motion = session.Forward.normalized * session.Speed;
-            if (session.Speed <= 0f)
-                motion += Vector3.down * Config.DroneFallSpeed;
-
-            Vector3 delta = motion * Time.deltaTime;
-            if (delta.sqrMagnitude <= 0.0000001f)
-            {
-                Settle(session, piloted);
-                return true;
-            }
-
-            float distance = delta.magnitude;
-            Vector3 direction = delta / distance;
-
-            if (Physics.SphereCast(from, DroneRadius, direction, out RaycastHit hit, distance)
-                && IsSolid(hit.collider, session))
-            {
-                return HandleImpact(session, hit, direction, piloted);
-            }
-
-            session.Position = from + delta;
-            Settle(session, piloted);
+            SetLight(session, canPlace ? Color.green : Color.red, Config.DroneLightIntensity);
             return true;
         }
 
-        /// <summary>Переносит схематик и пилота в текущую точку дрона.</summary>
-        private static void Settle(DroneSession session, bool piloted)
+        /// <summary>
+        /// Дрон следует за пилотом. Пилот летит noclip'ом сам; сервер вычисляет
+        /// пройденный за тик отрезок, ограничивает его максимальной скоростью,
+        /// проверяет столкновения и ведёт модель за игроком.
+        /// </summary>
+        /// <returns><c>false</c>, если дрон уничтожен.</returns>
+        private static bool TickPiloting(DroneSession session)
         {
-            MoveBody(session);
-
-            if (!piloted)
-                return;
-
             Player owner = session.Owner;
+            if (owner is null || !owner.IsAlive)
+            {
+                Release(session, "pilot lost");
+                session.Stage = DroneStage.Abandoned;
+                return true;
+            }
 
-            // Пилот прижат к дрону каждый кадр. Телепорт, а не физика: только так
-            // камера остаётся ровной и не отстаёт от машины.
-            owner.Position = CameraPoint(session);
+            // Держим невидимость: эффект продлевается, пока пилот в дроне.
+            owner.EnableEffect(EffectType.Invisible, 2f, false);
+
+            Vector3 now = owner.Position;
+            Vector3 delta = now - session.LastPilotPosition;
+            float step = Mathf.Max(0.01f, session.SpeedLimit) * FixedStep;
+
+            // Ограничитель максимальной скорости: если игрок ушёл дальше допустимого,
+            // мягко подтягиваем его назад. Коррекция редкая и визуально незаметная.
+            if (session.SpeedLimit <= 0f)
+            {
+                // Предел 0 - дрон стоит: держим пилота на месте дрона.
+                owner.Position = CameraPoint(session);
+                session.LastPilotPosition = owner.Position;
+                MoveBody(session);
+                return true;
+            }
+
+            if (delta.magnitude > step)
+            {
+                now = session.LastPilotPosition + delta.normalized * step;
+                owner.Position = now;
+                delta = now - session.LastPilotPosition;
+            }
+
+            if (delta.sqrMagnitude > 1e-6f)
+            {
+                session.Forward = Flatten(owner.CameraTransform is null ? session.Forward : owner.CameraTransform.forward);
+
+                if (SweepHit(session.LastPilotPosition, delta, session, out RaycastHit hit))
+                {
+                    float speed = delta.magnitude / FixedStep;
+                    if (!HandleImpact(session, hit, delta.normalized, speed))
+                        return false;
+
+                    // После удара пилота ставим к (возможно скорректированной) позиции дрона.
+                    owner.Position = CameraPoint(session);
+                }
+                else
+                {
+                    session.Position = now - Vector3.up * Config.DroneCameraOffset;
+                }
+            }
+
+            session.LastPilotPosition = owner.Position;
+            MoveBody(session);
+            return true;
         }
-
-        private static Vector3 CameraPoint(DroneSession session)
-            => session.Position + Vector3.up * Config.DroneCameraOffset;
 
         // ---------------------------------------------------------------- столкновения
 
-        /// <summary>Косинус угла, выше которого поверхность считается полом/потолком.</summary>
-        private const float FloorNormalThreshold = 0.5f;
-
-        /// <summary>Минимальная скорость тяги, при которой удар в стену даёт отскок.</summary>
-        private const float MinBounceSpeed = 0.2f;
-
         /// <summary>
-        /// Обрабатывает удар. Пол и потолок только останавливают дрон (без отскока),
-        /// стена на большой скорости разбивает его, стена на средней - отбрасывает.
+        /// Свип по пройденному отрезку. Возвращает первое твёрдое препятствие,
+        /// пропуская хитбоксы, трупы, пикапы, сам дрон и пилота.
         /// </summary>
-        /// <returns><c>false</c>, если дрон уничтожен.</returns>
-        /// <remarks>
-        /// Раньше любой контакт вызывал отскок на 2 м. Из-за гравитации дрон постоянно
-        /// падал на пол, отскакивал вверх, снова падал - камера дёргалась вверх-вниз.
-        /// Теперь удар о пол/потолок просто прижимает дрон к поверхности снаружи
-        /// (по нормали столкновения), поэтому он спокойно лежит на земле. Отскок
-        /// остался только для вертикальных стен, как и задумано.
-        ///
-        /// Позиция всегда выносится наружу поверхности через <c>hit.normal</c>, так что
-        /// дрон - и камера пилота вместе с ним - не проваливается под карту, даже если
-        /// пилот смотрел резко вниз.
-        /// </remarks>
-        private static bool HandleImpact(DroneSession session, RaycastHit hit, Vector3 direction, bool piloted)
+        private static bool SweepHit(Vector3 from, Vector3 delta, DroneSession session, out RaycastHit result)
         {
-            float speed = session.Speed;
-            string target = hit.collider is null ? "<unknown>" : hit.collider.name;
-
-            Vector3 normal = hit.normal;
-            bool wallLike = Mathf.Abs(normal.y) <= FloorNormalThreshold;
-
-            // Всегда выносим дрон на радиус наружу поверхности: это гарантирует, что
-            // он не окажется внутри геометрии или под полом.
-            Vector3 rest = hit.point + normal * (DroneRadius + WallClearance);
-
-            // Настоящий краш - только лобовой удар в стену на большой скорости.
-            // Падение на пол под действием гравитации крашем не считается.
-            if (wallLike && speed >= Config.DroneCrashSpeed)
-            {
-                DroneLog.Step("impact", session.Owner, $"crash into '{target}' at {speed:0.#} m/s");
-                Explode(session, hit.point, piloted);
+            result = default;
+            float distance = delta.magnitude;
+            if (distance <= 1e-5f)
                 return false;
-            }
 
-            // Пол, потолок или мягкое касание: прижимаемся снаружи, гасим скорость и
-            // помечаем дрон как лежащий. Пока стоит флаг Grounded, гравитация к нему
-            // не применяется - это и убирает дрожание "упал - оттолкнулся - упал".
-            if (!wallLike || speed < MinBounceSpeed)
+            Vector3 dir = delta / distance;
+            int count = Physics.SphereCastNonAlloc(from, DroneRadius, dir, HitBuffer, distance, SolidMask, QueryTriggerInteraction.Ignore);
+
+            float best = float.MaxValue;
+            bool found = false;
+            for (int i = 0; i < count; i++)
             {
-                session.Position = rest;
-                session.Speed = 0f;
+                RaycastHit h = HitBuffer[i];
+                if (!IsSolid(h.collider, session))
+                    continue;
 
-                // Полом считается только опора снизу (нормаль вверх). Потолок скорость
-                // гасит, но лежать на нём нельзя - иначе дрон завис бы под потолком.
-                session.Grounded = normal.y > FloorNormalThreshold;
-
-                Settle(session, piloted);
-                DroneLog.Step("impact", session.Owner, $"clamped to '{target}' (normal.y {normal.y:0.##}) at {speed:0.#} m/s");
-                return true;
+                if (h.distance < best)
+                {
+                    best = h.distance;
+                    result = h;
+                    found = true;
+                }
             }
 
-            // Средний удар в стену: отбрасываем назад вдоль нормали (от стены),
-            // гасим скорость. Дрон снова разгоняется прыжками.
-            session.Position = rest + normal * Mathf.Max(0f, Config.DroneBounceDistance);
-            session.Speed = 0f;
-            Settle(session, piloted);
-
-            DroneLog.Step("impact", session.Owner, $"bounced off '{target}' at {speed:0.#} m/s");
-            return true;
+            return found;
         }
 
         /// <summary>
-        /// Уничтожает дрон взрывом: обычная граната по игрокам плюс отдельный
-        /// разрушающий импульс по разрушаемым объектам.
+        /// Обработка удара. 6+ м/с - взрыв. Иначе дрон теряет HP (3 за 1 м/с),
+        /// отскакивает вдоль нормали и гасит часть скорости.
         /// </summary>
+        /// <returns><c>false</c>, если дрон уничтожен.</returns>
+        private static bool HandleImpact(DroneSession session, RaycastHit hit, Vector3 direction, float speed)
+        {
+            string target = hit.collider is null ? "<unknown>" : hit.collider.name;
+            Vector3 normal = hit.normal;
+            Vector3 rest = hit.point + normal * (DroneRadius + WallClearance);
+
+            if (speed >= Config.DroneCrashSpeed)
+            {
+                DroneLog.Step("impact", session.Owner, $"crash into '{target}' at {speed:0.#} m/s");
+                Explode(session, hit.point, session.Stage == DroneStage.Piloting);
+                return false;
+            }
+
+            session.Health -= speed * CrashDamagePerSpeed;
+            session.Position = rest - Vector3.up * Config.DroneCameraOffset;
+            DroneLog.Step("impact", session.Owner, $"bumped '{target}' at {speed:0.#} m/s, hp {session.Health:0.#}");
+
+            if (session.Health <= 0f)
+            {
+                Explode(session, hit.point, session.Stage == DroneStage.Piloting);
+                return false;
+            }
+
+            return true;
+        }
+
         private static void Explode(DroneSession session, Vector3 point, bool piloted)
         {
             Player owner = session.Owner;
 
-            // Пилот покидает дрон до взрыва: иначе он остался бы уменьшенным в
-            // noclip внутри огненного шара.
             if (piloted)
                 Release(session, "crash");
 
@@ -567,8 +577,6 @@ namespace MainCore.Drone
                 DroneLog.Error("explode", $"grenade spawn failed: {exception.GetType().Name}: {exception.Message}");
             }
 
-            // Ванильный взрыв гранаты почти не двигает разрушаемые объекты, поэтому
-            // импульс по ним задаётся отдельно - как у ракеты RPG.
             DestructionManager.HandleExplosion(
                 point,
                 Mathf.Max(0.1f, Config.DroneExplosionRadius),
@@ -576,33 +584,23 @@ namespace MainCore.Drone
                 Mathf.Max(0f, Config.DroneExplosionForce));
 
             DestroyBody(session);
+            sessions.Remove(owner);
             DroneLog.Step("explode", owner, $"drone destroyed at {Format(point)}");
         }
 
-        /// <summary>
-        /// Считается ли попадание твёрдым. Отсекает сам дрон, пилота, его даммика и
-        /// вспомогательные коллайдеры.
-        /// </summary>
         private static bool IsSolid(Collider? collider, DroneSession session)
         {
-            if (collider is null)
+            if (collider is null || collider.isTrigger)
                 return false;
 
-            if (collider.isTrigger)
-                return false;
-
-            if (session.Body is not null && collider.transform.IsChildOf(session.Body.transform))
+            if (session.Body != null && collider.transform.IsChildOf(session.Body.transform))
                 return false;
 
             Player owner = session.Owner;
-            if (owner?.GameObject is not null && collider.transform.IsChildOf(owner.GameObject.transform))
+            if (owner?.GameObject != null && collider.transform.IsChildOf(owner.GameObject.transform))
                 return false;
 
-            if (session.Dummy?.GameObject is not null && collider.transform.IsChildOf(session.Dummy.GameObject.transform))
-                return false;
-
-            string layer = LayerMask.LayerToName(collider.gameObject.layer);
-            if (!string.IsNullOrEmpty(layer) && IgnoredLayers.Contains(layer))
+            if (session.Dummy?.GameObject != null && collider.transform.IsChildOf(session.Dummy.GameObject.transform))
                 return false;
 
             return true;
@@ -611,15 +609,9 @@ namespace MainCore.Drone
         // ---------------------------------------------------------------- выход
 
         /// <summary>
-        /// Возвращает игроку управление собой. Вызывается рацией, при уроне, смерти и
-        /// выключении плагина.
+        /// Возвращает игроку управление собой и переводит дрон в Placed (можно зайти
+        /// снова). Вызывается рацией, при уроне, смерти, выходе игрока.
         /// </summary>
-        /// <remarks>
-        /// После выхода дрон переходит в состояние <see cref="DroneStage.Abandoned"/>
-        /// и продолжает лететь сам. Игрок может снова взять превью и войти в него,
-        /// используя <see cref="Deploy"/>, который проверяет, что сессия в состоянии
-        /// Preview (не Piloting).
-        /// </remarks>
         public static void ReturnControl(Player player, string reason)
         {
             if (player is null || !sessions.TryGetValue(player, out DroneSession session))
@@ -631,45 +623,54 @@ namespace MainCore.Drone
                 return;
             }
 
+            if (session.Stage != DroneStage.Piloting)
+                return;
+
             Release(session, reason);
 
-            // Дрон продолжает жить: он летит с той же скоростью, что и до выхода.
-            session.Stage = DroneStage.Abandoned;
+            // Дрон остаётся стоять на месте выхода - в него можно зайти повторно.
+            session.Stage = DroneStage.Placed;
+            SetLight(session, Color.white, Config.DroneLightIntensity);
         }
 
-        /// <summary>
-        /// Снимает с игрока всё, что связано с полётом: масштаб, noclip, позицию и
-        /// даммика. Сам дрон не трогает.
-        /// </summary>
+        /// <summary>Снимает с игрока полётное состояние и возвращает снимок инвентаря.</summary>
         private static void Release(DroneSession session, string reason)
         {
             Player owner = session.Owner;
 
             if (session.Dummy is not null)
             {
-                try
-                {
-                    session.Dummy.Destroy();
-                }
-                catch (Exception exception)
-                {
-                    DroneLog.Warn("release", owner, $"dummy destroy failed: {exception.Message}");
-                }
-
+                try { session.Dummy.Destroy(); }
+                catch (Exception exception) { DroneLog.Warn("release", owner, $"dummy destroy failed: {exception.Message}"); }
                 session.Dummy = null;
             }
 
             if (owner is null)
                 return;
 
-            owner.Scale = session.OwnerOriginalScale == Vector3.zero ? Vector3.one : session.OwnerOriginalScale;
+            owner.DisableEffect(EffectType.Invisible);
             owner.IsNoclipEnabled = session.OwnerNoclipEnabled;
             owner.IsNoclipPermitted = session.OwnerNoclipPermitted;
 
-            // Живого игрока возвращаем на его прежнее место: он всё это время
-            // "стоял" там в виде даммика.
-            if (owner.IsAlive && session.OwnerReturnPosition != Vector3.zero)
-                owner.Position = session.OwnerReturnPosition;
+            if (owner.IsAlive)
+            {
+                if (session.OwnerReturnPosition != Vector3.zero)
+                    owner.Position = session.OwnerReturnPosition;
+
+                // Возвращаем инвентарь/патроны/HP/cinfo как было до входа.
+                owner.ClearInventory();
+                foreach (ItemType type in session.OwnerItems)
+                    owner.AddItem(type);
+
+                owner.AddAmmo(session.OwnerAmmo);
+
+                if (session.OwnerMaxHealth > 0f)
+                    owner.MaxHealth = session.OwnerMaxHealth;
+                if (session.OwnerHealth > 0f)
+                    owner.Health = session.OwnerHealth;
+
+                owner.CustomInfo = session.OwnerCustomInfo;
+            }
 
             DroneLog.Step("release", owner, $"control returned ({reason})");
         }
@@ -686,7 +687,7 @@ namespace MainCore.Drone
             DroneLog.Step("remove", player, $"drone removed ({reason})");
         }
 
-        // ---------------------------------------------------------------- схематик
+        // ---------------------------------------------------------------- схематик и свет
 
         private static Component? SpawnBody(Vector3 position, Vector3 forward, out string error)
         {
@@ -696,11 +697,9 @@ namespace MainCore.Drone
 
             Component? body = MapEditorBridge.SpawnSchematic(Config.DroneSchematicName, position, rotation, out error);
 
-            // Схематик у дрона только визуальный. Его коллайдеры обязательно
-            // выключаются: иначе лучи поиска места установки и столкновений
-            // (SphereCast/Raycast) попадали бы в сам дрон, он "видел" бы себя и
-            // бесконечно дёргался туда-сюда. Это и есть настоящая причина тряски.
-            if (body is not null)
+            // Коллайдеры схематика выключаем: дрон только визуальный. Иначе лучи поиска
+            // места и столкновений попадали бы в сам дрон, и он бы дёргался/ловил себя.
+            if (body != null)
             {
                 foreach (Collider collider in body.GetComponentsInChildren<Collider>(true))
                     collider.enabled = false;
@@ -709,17 +708,54 @@ namespace MainCore.Drone
             return body;
         }
 
+        private static ToyLight? SpawnLight(Vector3 position)
+        {
+            try
+            {
+                ToyLight light = ToyLight.Create(position + Vector3.up * 0.3f, null, null, true, Color.green);
+                light.Intensity = Config.DroneLightIntensity;
+                light.Range = Config.DroneLightRange;
+                light.ShadowType = LightShadows.None;
+                return light;
+            }
+            catch (Exception exception)
+            {
+                DroneLog.Warn("light", $"spawn failed: {exception.GetType().Name}: {exception.Message}");
+                return null;
+            }
+        }
+
+        private static void SetLight(DroneSession session, Color color, float intensity)
+        {
+            if (session.Light is not ToyLight light)
+                return;
+
+            try
+            {
+                light.Color = color;
+                light.Intensity = intensity;
+                if (light.Base != null)
+                    light.Base.transform.position = session.Position + Vector3.up * 0.3f;
+            }
+            catch
+            {
+                // Свет - косметика; сбой не должен ронять полёт.
+            }
+        }
+
         private static void MoveBody(DroneSession session)
         {
             Component? body = session.Body;
-            if (body == null)
-                return;
+            if (body != null)
+            {
+                Transform t = body.transform;
+                t.position = session.Position;
+                if (session.Forward.sqrMagnitude > 0.0001f)
+                    t.rotation = Quaternion.LookRotation(session.Forward.normalized, Vector3.up);
+            }
 
-            Transform t = body.transform;
-            t.position = session.Position;
-
-            if (session.Forward.sqrMagnitude > 0.0001f)
-                t.rotation = Quaternion.LookRotation(session.Forward.normalized, Vector3.up);
+            if (session.Light is ToyLight light && light.Base != null)
+                light.Base.transform.position = session.Position + Vector3.up * 0.3f;
         }
 
         private static void DestroyBody(DroneSession session)
@@ -727,26 +763,85 @@ namespace MainCore.Drone
             Component? body = session.Body;
             session.Body = null;
 
-            if (body == null)
-                return;
-
-            try
+            if (body != null)
             {
-                UnityEngine.Object.Destroy(body.gameObject);
+                try { UnityEngine.Object.Destroy(body.gameObject); }
+                catch (Exception exception) { DroneLog.Warn("body", $"destroy failed: {exception.GetType().Name}: {exception.Message}"); }
             }
-            catch (Exception exception)
+
+            if (session.Light is ToyLight light)
             {
-                DroneLog.Warn("body", $"destroy failed: {exception.GetType().Name}: {exception.Message}");
+                session.Light = null;
+                try { light.Destroy(); }
+                catch { /* косметика */ }
             }
         }
 
-        // ---------------------------------------------------------------- прочее
+        // ---------------------------------------------------------------- геометрия
 
-        /// <summary>Убирает вертикальную составляющую: дрон ставится ровно, без наклона.</summary>
+        /// <summary>Ищет точку установки лучом вперёд с маской слоёв и посадкой на пол.</summary>
+        private static Vector3 ResolvePlacement(Player player, out bool canPlace)
+        {
+            Transform? camera = player.CameraTransform;
+            Vector3 origin = camera is not null ? camera.position : player.Position;
+            Vector3 direction = Flatten(camera is not null ? camera.forward : Vector3.forward);
+
+            float distance = Mathf.Max(0f, Config.DronePreviewDistance);
+            Vector3 target = origin + direction * distance;
+
+            // Луч вперёд с маской: не попадаем в самого игрока (его хитбокс не в маске).
+            if (Physics.SphereCast(origin, DroneRadius, direction, out RaycastHit forwardHit, distance, SolidMask, QueryTriggerInteraction.Ignore))
+                target = origin + direction * Mathf.Max(0f, forwardHit.distance - WallClearance);
+
+            // Посадка на пол.
+            if (Physics.Raycast(target, Vector3.down, out RaycastHit floorHit, 10f, SolidMask, QueryTriggerInteraction.Ignore))
+                target = floorHit.point + Vector3.up * DroneRadius;
+
+            // Ставить можно, если точка не внутри геометрии.
+            canPlace = !Physics.CheckSphere(target, DroneRadius * 0.9f, SolidMask, QueryTriggerInteraction.Ignore);
+            return target;
+        }
+
+        private static Vector3 CameraPoint(DroneSession session)
+            => session.Position + Vector3.up * Config.DroneCameraOffset;
+
         private static Vector3 Flatten(Vector3 direction)
         {
             direction.y = 0f;
             return direction.sqrMagnitude < 0.0001f ? Vector3.forward : direction.normalized;
+        }
+
+        /// <summary>Пересекает ли луч сферу; <paramref name="distance"/> - до точки входа.</summary>
+        private static bool RaySphere(Vector3 origin, Vector3 dir, Vector3 center, float radius, out float distance)
+        {
+            distance = 0f;
+            Vector3 oc = origin - center;
+            float b = Vector3.Dot(oc, dir);
+            float c = Vector3.Dot(oc, oc) - radius * radius;
+            float disc = b * b - c;
+            if (disc < 0f)
+                return false;
+
+            float t = -b - Mathf.Sqrt(disc);
+            if (t < 0f)
+                t = 0f;
+
+            distance = t;
+            return true;
+        }
+
+        /// <summary>Маска слоёв столкновений: всё, кроме хитбоксов/рэгдоллов/пикапов.</summary>
+        private static int BuildSolidMask()
+        {
+            int mask = ~0;
+            foreach (string layer in new[] { "Hitbox", "Ragdoll", "Pickup", "Ignore Raycast", "InvisibleCollider", "Player" })
+            {
+                int index = LayerMask.NameToLayer(layer);
+                if (index >= 0)
+                    mask &= ~(1 << index);
+            }
+
+            return mask;
         }
 
         private static string Format(Vector3 v) => $"({v.x:0.##}, {v.y:0.##}, {v.z:0.##})";

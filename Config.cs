@@ -304,14 +304,24 @@ namespace MainCore
         [Description("Drone: name of the ProjectMER schematic used as the drone body.")]
         public string DroneSchematicName { get; set; } = "drone";
 
+        [Description("Drone: hit points. The drone explodes when shot or crashed down to zero.")]
+        public float DroneHealth { get; set; } = 30f;
+
+        [Description("Drone: indicator light intensity (green=can place, red=blocked, white=placed/flying).")]
+        public float DroneLightIntensity { get; set; } = 5f;
+
+        [Description("Drone: indicator light range in metres.")]
+        public float DroneLightRange { get; set; } = 4f;
+
         [Description("Drone: how far (m) in front of the player the placement preview appears.")]
         public float DronePreviewDistance { get; set; } = 2f;
 
         [Description("Drone: speed gained per jump press, in metres per second.")]
         public float DroneSpeedStep { get; set; } = 1f;
 
-        [Description("Drone: maximum speed in metres per second.")]
-        public float DroneMaxSpeed { get; set; } = 25f;
+        [Description("Drone: maximum speed in metres per second. Kept close to the crash speed " +
+                     "on purpose - a high ceiling only lets pilots kill themselves on the first wall.")]
+        public float DroneMaxSpeed { get; set; } = 10f;
 
         [Description("Drone: impact speed (m/s) at or above which a collision destroys the drone. " +
                      "Slower impacts only bounce it back.")]

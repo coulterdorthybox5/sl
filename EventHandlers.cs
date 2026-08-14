@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Exiled.API.Enums;
 using Exiled.Events.EventArgs.Map;
 using Exiled.Events.EventArgs.Player;
@@ -6,6 +7,7 @@ using MainCore.CustomItems;
 using MainCore.Destruction;
 using MainCore.Drone;
 using MainCore.Medical;
+using UnityEngine;
 
 // using MainCore.Medical.Visuals; // ВРЕМЕННО: система видимых ранений отключена
 
@@ -16,6 +18,16 @@ namespace MainCore
     /// </summary>
     public sealed class EventHandlers
     {
+        /// <summary>
+        /// Момент последнего нажатия рации по игроку. Одно нажатие шлёт и
+        /// <see cref="OnTogglingRadio"/>, и <see cref="OnChangingRadioPreset"/>;
+        /// кулдаун гасит дубль, иначе игрок за один клик и войдёт, и тут же выйдет.
+        /// </summary>
+        private static readonly Dictionary<string, float> radioCooldown = new Dictionary<string, float>();
+
+        /// <summary>Минимальный интервал между реакциями на кнопку рации, секунды.</summary>
+        private const float RadioCooldownSeconds = 0.25f;
+
         public void OnWaitingForPlayers()
         {
             MedicalManager.Start();
@@ -129,31 +141,53 @@ namespace MainCore
         }
 
         /// <summary>
-        /// Единое действие на кнопку рации: в полёте - возврат управления, на земле с
-        /// готовым превью - установка дрона. Возвращает <c>true</c>, если событие
-        /// нужно отменить.
+        /// Единое действие на кнопку рации по стадиям дрона:
+        /// Preview -> Placed (поставить), Placed -> Piloting (войти),
+        /// Piloting -> Placed (выйти). Возвращает <c>true</c>, если событие отменить.
         /// </summary>
+        /// <remarks>
+        /// Кулдаун по игроку обязателен: одно нажатие приходит дважды (TogglingRadio +
+        /// ChangingRadioPreset), и без него игрок за один клик прошёл бы две стадии
+        /// (например, вошёл и сразу вышел).
+        /// </remarks>
         private static bool HandleRadioKey(Exiled.API.Features.Player player)
         {
-            // Лог помогает понять по серверной консоли, доходит ли нажатие рации до
-            // дрона и почему вход не срабатывает (нет превью / уже в полёте).
-            bool piloting = DroneManager.IsPiloting(player);
-            bool preview = DroneManager.HasPreview(player);
-            DroneLog.Step("radio", player, $"key pressed (piloting={piloting}, preview={preview})");
+            string id = player.UserId ?? player.Nickname ?? string.Empty;
+            float now = Time.realtimeSinceStartup;
+            if (radioCooldown.TryGetValue(id, out float last) && now - last < RadioCooldownSeconds)
+                return true; // дубль того же нажатия - гасим, но событие отменяем
 
-            if (piloting)
+            if (DroneManager.IsPiloting(player))
             {
+                radioCooldown[id] = now;
                 DroneManager.ReturnControl(player, "radio");
                 return true;
             }
 
-            if (preview)
+            if (DroneManager.HasPlaced(player))
             {
+                radioCooldown[id] = now;
                 DroneManager.Deploy(player);
                 return true;
             }
 
+            if (DroneManager.HasPreview(player))
+            {
+                radioCooldown[id] = now;
+                DroneManager.Place(player);
+                return true;
+            }
+
             return false;
+        }
+
+        /// <summary>Выстрел игрока: возможно, попал по дрону (у схематика нет коллайдеров).</summary>
+        public void OnShot(ShotEventArgs ev)
+        {
+            if (ev.Player is null)
+                return;
+
+            DroneManager.HandleShot(ev.Player, 15f);
         }
 
         /// <summary>Урон превращается в ранения.</summary>
@@ -165,10 +199,31 @@ namespace MainCore
             InjuryResolver.Resolve(ev);
             DestructionManager.OnHurting(ev);
 
-            // Пилота выбивает из дрона любым уроном: тело оператора всё это время
-            // стоит на земле и уязвимо, а дрон после выхода летит дальше сам.
-            if (ev.Player is not null && DroneManager.IsPiloting(ev.Player))
+            // Пилота выбивает из дрона только реальной атакой по телу. Кровотечение,
+            // яд и прочий периодический урон игнорируем: иначе раненый пилот вылетал бы
+            // из дрона каждую секунду от тика собственной медсистемы.
+            if (ev.Player is not null && DroneManager.IsPiloting(ev.Player) && IsRealAttack(ev.DamageHandler.Type))
                 DroneManager.ReturnControl(ev.Player, "pilot hurt");
+        }
+
+        /// <summary>Реальная ли это атака по телу (а не кровотечение/яд/окружение).</summary>
+        private static bool IsRealAttack(DamageType type)
+        {
+            switch (type)
+            {
+                case DamageType.Bleeding:
+                case DamageType.Poison:
+                case DamageType.Asphyxiation:
+                case DamageType.Decontamination:
+                case DamageType.Scp207:
+                case DamageType.Hypothermia:
+                case DamageType.CardiacArrest:
+                case DamageType.Custom:
+                case DamageType.Unknown:
+                    return false;
+                default:
+                    return true;
+            }
         }
 
         public void OnChangedIntoGrenade(ChangedIntoGrenadeEventArgs ev)
@@ -240,6 +295,11 @@ namespace MainCore
         /// </summary>
         public void OnChangingRole(ChangingRoleEventArgs ev)
         {
+            // Смена роли (в т.ч. RA без смерти) обязана вернуть пилоту управление:
+            // иначе он останется в noclip и невидимым в новой роли.
+            if (ev.Player is not null)
+                DroneManager.ReturnControl(ev.Player, "role changed");
+
             // ВРЕМЕННО: визуал ранений отключён
             // if (ev.Player is not null)
             //     WoundVisualManager.RemoveAll(ev.Player);

@@ -58,6 +58,7 @@ namespace MainCore
             PlayerHandlers.ThrowingRequest += handlers.OnThrowingRequest;
             PlayerHandlers.TogglingRadio += handlers.OnTogglingRadio;
             PlayerHandlers.ChangingRadioPreset += handlers.OnChangingRadioPreset;
+            PlayerHandlers.Shot += handlers.OnShot;
 
             ServerHandlers.WaitingForPlayers += handlers.OnWaitingForPlayers;
             ServerHandlers.RestartingRound += handlers.OnRestartingRound;
@@ -92,6 +93,7 @@ namespace MainCore
             PlayerHandlers.ThrowingRequest -= handlers.OnThrowingRequest;
             PlayerHandlers.TogglingRadio -= handlers.OnTogglingRadio;
             PlayerHandlers.ChangingRadioPreset -= handlers.OnChangingRadioPreset;
+            PlayerHandlers.Shot -= handlers.OnShot;
 
             ServerHandlers.WaitingForPlayers -= handlers.OnWaitingForPlayers;
             ServerHandlers.RestartingRound -= handlers.OnRestartingRound;
