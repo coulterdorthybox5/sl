@@ -313,6 +313,12 @@ namespace MainCore
         [Description("Drone: indicator light range in metres.")]
         public float DroneLightRange { get; set; } = 4f;
 
+        [Description("Drone: how long the light stays solid white after placement, in seconds.")]
+        public float DroneLightHoldSeconds { get; set; } = 1f;
+
+        [Description("Drone: how long the light fades from full to zero after the hold, in seconds.")]
+        public float DroneLightFadeSeconds { get; set; } = 3f;
+
         [Description("Drone: how far (m) in front of the player the placement preview appears.")]
         public float DronePreviewDistance { get; set; } = 2f;
 
@@ -357,7 +363,7 @@ namespace MainCore
 
         [Description("Drone: verbose log of every drone step (preview, spawn, speed change, impact, exit). " +
                      "Keep it on while testing - the log names the exact step that failed.")]
-        public bool DroneDebug { get; set; } = true;
+        public bool DroneDebug { get; set; } = false;
 
 
 

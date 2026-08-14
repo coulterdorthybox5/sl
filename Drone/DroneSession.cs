@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Exiled.API.Enums;
 using Exiled.API.Features;
 using Exiled.API.Features.Items;
+using MEC;
 using UnityEngine;
 
 namespace MainCore.Drone
@@ -61,6 +62,25 @@ namespace MainCore.Drone
 
         /// <summary>Позиция дрона. Ведётся отдельно от схематика.</summary>
         internal Vector3 Position { get; set; }
+
+        /// <summary>
+        /// Можно ли поставить дрон в текущей точке превью. Кешируется каждый тик,
+        /// чтобы <c>Place</c> ставил именно ту точку, что игрок видел зелёной, а не
+        /// пересчитывал позицию заново (за это время камера успевает сместиться).
+        /// </summary>
+        internal bool CanPlace { get; set; }
+
+        /// <summary>Когда в последний раз обновлялась точка превью (для свежести Place).</summary>
+        internal float PlacementUpdatedAt { get; set; }
+
+        /// <summary>Последний применённый цвет света: не переписываем 20 раз в секунду.</summary>
+        internal Color? LightColor { get; set; }
+
+        /// <summary>Последняя применённая интенсивность света.</summary>
+        internal float LightIntensity { get; set; } = -1f;
+
+        /// <summary>Корутина «1 с белого + 3 с затухания» после установки.</summary>
+        internal CoroutineHandle LightFade { get; set; }
 
         /// <summary>Направление полёта (по взгляду пилота).</summary>
         internal Vector3 Forward { get; set; } = Vector3.forward;

@@ -19,14 +19,14 @@ namespace MainCore
     public sealed class EventHandlers
     {
         /// <summary>
-        /// Момент последнего нажатия рации по игроку. Одно нажатие шлёт и
-        /// <see cref="OnTogglingRadio"/>, и <see cref="OnChangingRadioPreset"/>;
-        /// кулдаун гасит дубль, иначе игрок за один клик и войдёт, и тут же выйдет.
+        /// Момент последнего действия кнопки дрона по игроку. Стадии переключает
+        /// только <see cref="OnChangingRadioPreset"/>; дедупликация - страховка от
+        /// двойного события за один клик при лагах.
         /// </summary>
         private static readonly Dictionary<string, float> radioCooldown = new Dictionary<string, float>();
 
         /// <summary>Минимальный интервал между реакциями на кнопку рации, секунды.</summary>
-        private const float RadioCooldownSeconds = 0.25f;
+        private const float RadioCooldownSeconds = 0.5f;
 
         public void OnWaitingForPlayers()
         {
@@ -114,22 +114,24 @@ namespace MainCore
         }
 
         /// <summary>
-        /// Рация - единственная кнопка дрона: на земле она ставит дрон, в полёте
-        /// возвращает управление игроку.
+        /// Включение рации у дрона не задействовано (его роль выполняет смена волны,
+        /// см. <see cref="OnChangingRadioPreset"/>). Здесь только глушим ванильное
+        /// действие, если игрок связан с дроном, чтобы рация не срабатывала.
         /// </summary>
         public void OnTogglingRadio(TogglingRadioEventArgs ev)
         {
             if (ev.Player is null)
                 return;
 
-            if (HandleRadioKey(ev.Player))
+            if (DroneManager.IsPiloting(ev.Player) || DroneManager.HasPlaced(ev.Player) || DroneManager.HasPreview(ev.Player))
                 ev.IsAllowed = false;
         }
 
         /// <summary>
-        /// ЛКМ на рации - это смена волны (preset), а не включение рации. Именно это
-        /// событие приходит по нажатию ЛКМ, поэтому вход в дрон и возврат управления
-        /// висят здесь, а не только на <see cref="OnTogglingRadio"/>.
+        /// ЛКМ на рации - это смена волны (preset). Именно это событие соответствует
+        /// клику, поэтому стадии дрона переключаются ТОЛЬКО здесь. Разносить действие
+        /// на два события нельзя: один клик приходит и как TogglingRadio, и как
+        /// ChangingRadioPreset, и игрок проскочил бы две стадии за раз.
         /// </summary>
         public void OnChangingRadioPreset(ChangingRadioPresetEventArgs ev)
         {
@@ -141,21 +143,16 @@ namespace MainCore
         }
 
         /// <summary>
-        /// Единое действие на кнопку рации по стадиям дрона:
+        /// Действие кнопки по стадиям дрона:
         /// Preview -> Placed (поставить), Placed -> Piloting (войти),
         /// Piloting -> Placed (выйти). Возвращает <c>true</c>, если событие отменить.
         /// </summary>
-        /// <remarks>
-        /// Кулдаун по игроку обязателен: одно нажатие приходит дважды (TogglingRadio +
-        /// ChangingRadioPreset), и без него игрок за один клик прошёл бы две стадии
-        /// (например, вошёл и сразу вышел).
-        /// </remarks>
         private static bool HandleRadioKey(Exiled.API.Features.Player player)
         {
             string id = player.UserId ?? player.Nickname ?? string.Empty;
             float now = Time.realtimeSinceStartup;
             if (radioCooldown.TryGetValue(id, out float last) && now - last < RadioCooldownSeconds)
-                return true; // дубль того же нажатия - гасим, но событие отменяем
+                return true; // дубль события за один клик - гасим, но отменяем
 
             if (DroneManager.IsPiloting(player))
             {
