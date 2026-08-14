@@ -164,6 +164,13 @@ namespace MainCore.Drone
             bool fresh = Time.realtimeSinceStartup - session.PlacementUpdatedAt <= PlacementFreshness;
             if (!session.CanPlace || !fresh)
             {
+                float age = Time.realtimeSinceStartup - session.PlacementUpdatedAt;
+
+                DroneLog.Step(
+                    "place",
+                    player,
+                    $"rejected: canPlace={session.CanPlace}, fresh={fresh}, age={age:0.000}s");
+
                 player.ShowHint("<b>FPV Drone:</b> can't place here.", 1.5f);
                 return false;
             }

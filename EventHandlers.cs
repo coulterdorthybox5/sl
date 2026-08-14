@@ -114,32 +114,37 @@ namespace MainCore
         }
 
         /// <summary>
-        /// Включение рации у дрона не задействовано (его роль выполняет смена волны,
-        /// см. <see cref="OnChangingRadioPreset"/>). Здесь только глушим ванильное
-        /// действие, если игрок связан с дроном, чтобы рация не срабатывала.
+        /// ЛКМ по рации приходит как TogglingRadio - именно оно переключает стадии
+        /// дрона: Preview -> Placed -> Piloting -> Placed. Стадию двигаем только здесь,
+        /// а смену волны (<see cref="OnChangingRadioPreset"/>) лишь глушим, чтобы не
+        /// проскочить две стадии за один клик.
         /// </summary>
         public void OnTogglingRadio(TogglingRadioEventArgs ev)
         {
             if (ev.Player is null)
                 return;
 
-            if (DroneManager.IsPiloting(ev.Player) || DroneManager.HasPlaced(ev.Player) || DroneManager.HasPreview(ev.Player))
+            // Именно ЛКМ переключает стадии дрона.
+            if (HandleRadioKey(ev.Player))
                 ev.IsAllowed = false;
         }
 
         /// <summary>
-        /// ЛКМ на рации - это смена волны (preset). Именно это событие соответствует
-        /// клику, поэтому стадии дрона переключаются ТОЛЬКО здесь. Разносить действие
-        /// на два события нельзя: один клик приходит и как TogglingRadio, и как
-        /// ChangingRadioPreset, и игрок проскочил бы две стадии за раз.
+        /// Смена волны/дальности рации. Стадию дрона здесь НЕ трогаем (это делает
+        /// <see cref="OnTogglingRadio"/> по ЛКМ), только блокируем ванильную смену
+        /// пресета у рации, связанной с дроном.
         /// </summary>
         public void OnChangingRadioPreset(ChangingRadioPresetEventArgs ev)
         {
             if (ev.Player is null)
                 return;
 
-            if (HandleRadioKey(ev.Player))
+            if (DroneManager.IsPiloting(ev.Player) ||
+                DroneManager.HasPlaced(ev.Player) ||
+                DroneManager.HasPreview(ev.Player))
+            {
                 ev.IsAllowed = false;
+            }
         }
 
         /// <summary>

@@ -5,6 +5,7 @@ using Exiled.API.Features.Spawn;
 using Exiled.CustomItems.API.Features;
 using Exiled.Events.EventArgs.Player;
 using MainCore.Drone;
+using MEC;
 
 namespace MainCore.CustomItems
 {
@@ -75,21 +76,35 @@ namespace MainCore.CustomItems
         /// Событие приходит и когда рацию берут, и когда убирают, поэтому обе ветки
         /// обрабатываются здесь: иначе схематик остался бы висеть в воздухе после
         /// переключения на другой предмет.
+        ///
+        /// ChangingItem иногда приходит с промежуточным null/нераспознанным предметом
+        /// (кадр между слотами), и наивная ветка else немедленно уничтожала бы только
+        /// что показанное превью. Поэтому отмену откладываем и проверяем РЕАЛЬНО
+        /// выбранный предмет, а не промежуточный <c>ev.Item</c>.
         /// </remarks>
         private void OnChangingItem(ChangingItemEventArgs ev)
         {
-            if (ev.Player is null)
+            Player player = ev.Player;
+            if (player is null || DroneManager.IsPiloting(player))
                 return;
 
-            // У пилота в руках своя рация для возврата управления: новое превью
-            // посреди полёта только сбросило бы текущий дрон.
-            if (DroneManager.IsPiloting(ev.Player))
+            if (ev.Item is not null && Check(ev.Item))
+            {
+                DroneManager.ShowPreview(player);
                 return;
+            }
 
-            if (Check(ev.Item))
-                DroneManager.ShowPreview(ev.Player);
-            else
-                DroneManager.CancelPreview(ev.Player);
+            // Событие иногда приходит с промежуточным null/неактуальным предметом.
+            Timing.CallDelayed(0.15f, () =>
+            {
+                Item current = player.CurrentItem;
+
+                // Рация всё ещё реально находится в руках - превью не трогаем.
+                if (current is not null && Check(current))
+                    return;
+
+                DroneManager.CancelPreview(player);
+            });
         }
     }
 }
