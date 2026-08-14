@@ -4,6 +4,7 @@ using Exiled.API.Enums;
 using Exiled.API.Features;
 using Exiled.API.Features.Items;
 using Exiled.API.Features.Pickups.Projectiles;
+using AdminToys;
 using MainCore.Destruction;
 using MainCore.Medical.Visuals;
 using MEC;
@@ -132,7 +133,7 @@ namespace MainCore.Drone
                 Health = Mathf.Max(1f, Config.DroneHealth),
             };
 
-            session.Body = SpawnBody(spot, session.Forward, out string error);
+            session.Body = SpawnBody(spot, session.Forward, session, out string error);
             if (session.Body is null)
             {
                 DroneLog.Warn("preview", player, $"schematic '{Config.DroneSchematicName}' not spawned: {error}");
@@ -689,20 +690,51 @@ namespace MainCore.Drone
 
         // ---------------------------------------------------------------- схематик и свет
 
-        private static Component? SpawnBody(Vector3 position, Vector3 forward, out string error)
+        private static Component? SpawnBody(Vector3 position, Vector3 forward, DroneSession session, out string error)
         {
             Quaternion rotation = forward.sqrMagnitude > 0.0001f
                 ? Quaternion.LookRotation(forward, Vector3.up)
                 : Quaternion.identity;
 
             Component? body = MapEditorBridge.SpawnSchematic(Config.DroneSchematicName, position, rotation, out error);
+            if (body == null)
+                return null;
 
             // Коллайдеры схематика выключаем: дрон только визуальный. Иначе лучи поиска
             // места и столкновений попадали бы в сам дрон, и он бы дёргался/ловил себя.
-            if (body != null)
+            foreach (Collider collider in body.GetComponentsInChildren<Collider>(true))
+                collider.enabled = false;
+
+            // Захватываем сетевых детей и отвязываем их от корня. AdminToyBase публикует
+            // ЛОКАЛЬНЫЕ координаты, а иерархию клиент узнаёт из ненадёжного RpcChangeParent.
+            // Без родителя local == world, и SyncVar сразу несёт верную мировую позицию -
+            // тот же приём, что и в BoneFollower. Иначе модель у клиента застревала бы в
+            // точке спавна, хотя на сервере она движется.
+            session.BodyBlocks.Clear();
+            Transform root = body.transform;
+            foreach (AdminToyBase toy in body.GetComponentsInChildren<AdminToyBase>(true))
             {
-                foreach (Collider collider in body.GetComponentsInChildren<Collider>(true))
-                    collider.enabled = false;
+                Transform child = toy.transform;
+                if (child == root)
+                    continue;
+
+                Vector3 worldPos = child.position;
+                Quaternion worldRot = child.rotation;
+                Vector3 worldScale = child.lossyScale;
+
+                if (child.parent != null)
+                    child.SetParent(null, true);
+
+                session.BodyBlocks.Add(new DroneBodyBlock
+                {
+                    Transform = child,
+                    Offset = worldPos - position,
+                    Rotation = Quaternion.Inverse(rotation) * worldRot,
+                    Scale = worldScale,
+                });
+
+                toy.NetworkIsStatic = false;
+                toy.NetworkMovementSmoothing = 60;
             }
 
             return body;
@@ -745,13 +777,26 @@ namespace MainCore.Drone
 
         private static void MoveBody(DroneSession session)
         {
+            Quaternion rotation = session.Forward.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(session.Forward.normalized, Vector3.up)
+                : Quaternion.identity;
+
             Component? body = session.Body;
             if (body != null)
+                body.transform.SetPositionAndRotation(session.Position, rotation);
+
+            // Двигаем каждого отвязанного ребёнка в мировых координатах: только так
+            // клиент увидит перемещение (см. комментарий в SpawnBody).
+            List<DroneBodyBlock> blocks = session.BodyBlocks;
+            for (int i = 0; i < blocks.Count; i++)
             {
-                Transform t = body.transform;
-                t.position = session.Position;
-                if (session.Forward.sqrMagnitude > 0.0001f)
-                    t.rotation = Quaternion.LookRotation(session.Forward.normalized, Vector3.up);
+                DroneBodyBlock block = blocks[i];
+                if (block.Transform == null)
+                    continue;
+
+                block.Transform.position = session.Position + (rotation * block.Offset);
+                block.Transform.rotation = rotation * block.Rotation;
+                block.Transform.localScale = block.Scale;
             }
 
             if (session.Light is ToyLight light && light.Base != null)
@@ -760,6 +805,8 @@ namespace MainCore.Drone
 
         private static void DestroyBody(DroneSession session)
         {
+            session.BodyBlocks.Clear();
+
             Component? body = session.Body;
             session.Body = null;
 

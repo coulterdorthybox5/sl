@@ -45,6 +45,13 @@ namespace MainCore.Drone
         internal Component? Body { get; set; }
 
         /// <summary>
+        /// Сетевые дети схематика, отвязанные от корня, с их смещением относительно
+        /// центра дрона. Двигаются в мировых координатах каждый тик - иначе клиент
+        /// удержал бы координаты спавна (см. BoneFollower / docs/Schematics.md).
+        /// </summary>
+        internal List<DroneBodyBlock> BodyBlocks { get; } = new List<DroneBodyBlock>();
+
+        /// <summary>
         /// Источник света над дроном (красный/зелёный/белый индикатор).
         /// Хранится как <see cref="object"/>: тип-тулза Exiled Light не наследует
         /// Unity <see cref="Component"/>, поэтому в менеджере он приводится через
@@ -93,5 +100,17 @@ namespace MainCore.Drone
         internal Dictionary<ItemType, ushort> OwnerAmmo { get; } = new Dictionary<ItemType, ushort>();
 
         internal DroneSession(Player owner) => Owner = owner;
+    }
+
+    /// <summary>Один сетевой блок схематика дрона и его смещение от центра.</summary>
+    internal struct DroneBodyBlock
+    {
+        internal Transform Transform;
+
+        internal Vector3 Offset;
+
+        internal Quaternion Rotation;
+
+        internal Vector3 Scale;
     }
 }
