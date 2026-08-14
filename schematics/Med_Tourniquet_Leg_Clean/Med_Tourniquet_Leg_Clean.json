@@ -1,0 +1,167 @@
+{
+  "RootObjectId": -810192,
+  "Blocks": [
+    {
+      "Name": "Band_Front",
+      "ObjectId": -810202,
+      "ParentId": -810192,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1656,
+        "y": 0.045,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "3A3A3AFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Back",
+      "ObjectId": -810212,
+      "ParentId": -810192,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": -0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1656,
+        "y": 0.045,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "3A3A3AFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Left",
+      "ObjectId": -810222,
+      "ParentId": -810192,
+      "Position": {
+        "x": -0.0828,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.045,
+        "z": 0.2026
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "3A3A3AFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Right",
+      "ObjectId": -810232,
+      "ParentId": -810192,
+      "Position": {
+        "x": 0.0828,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.045,
+        "z": 0.2026
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "3A3A3AFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Windlass",
+      "ObjectId": -810242,
+      "ParentId": -810192,
+      "Position": {
+        "x": 0.1008,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 25.0
+      },
+      "Scale": {
+        "x": 0.07,
+        "y": 0.014,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "6B4A2AFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Windlass_Clip",
+      "ObjectId": -810252,
+      "ParentId": -810192,
+      "Position": {
+        "x": 0.0928,
+        "y": -0.028,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.02,
+        "y": 0.02,
+        "z": 0.016
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "2A2A2AFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    }
+  ]
+}

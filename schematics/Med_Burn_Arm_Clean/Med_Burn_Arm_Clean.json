@@ -1,0 +1,140 @@
+{
+  "RootObjectId": -1038375,
+  "Blocks": [
+    {
+      "Name": "Band_Front",
+      "ObjectId": -1038385,
+      "ParentId": -1038375,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0826
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.0913,
+        "y": 0.09,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "F3EFE4FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Back",
+      "ObjectId": -1038395,
+      "ParentId": -1038375,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": -0.0826
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.0913,
+        "y": 0.09,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "F3EFE4FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Left",
+      "ObjectId": -1038405,
+      "ParentId": -1038375,
+      "Position": {
+        "x": -0.04565,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.09,
+        "z": 0.1652
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "F3EFE4FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Right",
+      "ObjectId": -1038415,
+      "ParentId": -1038375,
+      "Position": {
+        "x": 0.04565,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.09,
+        "z": 0.1652
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "F3EFE4FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Pad_Front",
+      "ObjectId": -1038425,
+      "ParentId": -1038375,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0162,
+        "z": 0.0926
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.04362,
+        "y": 0.045,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "E8E0CEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    }
+  ]
+}

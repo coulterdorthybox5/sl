@@ -1,0 +1,194 @@
+{
+  "RootObjectId": -733565,
+  "Blocks": [
+    {
+      "Name": "Band_Front",
+      "ObjectId": -733575,
+      "ParentId": -733565,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.1143
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.3707,
+        "y": 0.15,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Back",
+      "ObjectId": -733585,
+      "ParentId": -733565,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": -0.1143
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.3707,
+        "y": 0.15,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Left",
+      "ObjectId": -733595,
+      "ParentId": -733565,
+      "Position": {
+        "x": -0.18535,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.15,
+        "z": 0.2286
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Right",
+      "ObjectId": -733605,
+      "ParentId": -733565,
+      "Position": {
+        "x": 0.18535,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.15,
+        "z": 0.2286
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Knot",
+      "ObjectId": -733615,
+      "ParentId": -733565,
+      "Position": {
+        "x": 0.18535,
+        "y": 0.0,
+        "z": 0.05144
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 45.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.03,
+        "y": 0.03,
+        "z": 0.03
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "8B8069FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Stain_Front",
+      "ObjectId": -733625,
+      "ParentId": -733565,
+      "Position": {
+        "x": 0.06457,
+        "y": 0.0075,
+        "z": 0.1173
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.14348,
+        "y": 0.075,
+        "z": 0.004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "6E6450FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Stain_Side",
+      "ObjectId": -733635,
+      "ParentId": -733565,
+      "Position": {
+        "x": -0.18835,
+        "y": 0.018,
+        "z": 0.03249
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.004,
+        "y": 0.063,
+        "z": 0.06498
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "77694FFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    }
+  ]
+}

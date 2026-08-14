@@ -1,0 +1,140 @@
+{
+  "RootObjectId": -710489,
+  "Blocks": [
+    {
+      "Name": "Band_Front",
+      "ObjectId": -710499,
+      "ParentId": -710489,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.1143
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.3707,
+        "y": 0.15,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "EDE7D9FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Back",
+      "ObjectId": -710509,
+      "ParentId": -710489,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": -0.1143
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.3707,
+        "y": 0.15,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "EDE7D9FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Left",
+      "ObjectId": -710519,
+      "ParentId": -710489,
+      "Position": {
+        "x": -0.18535,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.15,
+        "z": 0.2286
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "EDE7D9FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Right",
+      "ObjectId": -710529,
+      "ParentId": -710489,
+      "Position": {
+        "x": 0.18535,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.15,
+        "z": 0.2286
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "EDE7D9FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Knot",
+      "ObjectId": -710539,
+      "ParentId": -710489,
+      "Position": {
+        "x": 0.18535,
+        "y": 0.0,
+        "z": 0.05144
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 45.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.03,
+        "y": 0.03,
+        "z": 0.03
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "E4DCC9FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    }
+  ]
+}

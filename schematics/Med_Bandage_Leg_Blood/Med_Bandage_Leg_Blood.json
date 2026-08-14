@@ -1,0 +1,221 @@
+{
+  "RootObjectId": -727699,
+  "Blocks": [
+    {
+      "Name": "Band_Front",
+      "ObjectId": -727709,
+      "ParentId": -727699,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1656,
+        "y": 0.11,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Back",
+      "ObjectId": -727719,
+      "ParentId": -727699,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": -0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1656,
+        "y": 0.11,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Left",
+      "ObjectId": -727729,
+      "ParentId": -727699,
+      "Position": {
+        "x": -0.0828,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.11,
+        "z": 0.2026
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Band_Right",
+      "ObjectId": -727739,
+      "ParentId": -727699,
+      "Position": {
+        "x": 0.0828,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.014,
+        "y": 0.11,
+        "z": 0.2026
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Knot",
+      "ObjectId": -727749,
+      "ParentId": -727699,
+      "Position": {
+        "x": 0.0828,
+        "y": 0.0,
+        "z": 0.04559
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 45.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.03,
+        "y": 0.03,
+        "z": 0.03
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "D2C8B0FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Blood_Soak_Front",
+      "ObjectId": -727759,
+      "ParentId": -727699,
+      "Position": {
+        "x": 0.03072,
+        "y": 0.0088,
+        "z": 0.1053
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.07373,
+        "y": 0.0682,
+        "z": 0.005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "8E1B14FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Blood_Soak_Side",
+      "ObjectId": -727769,
+      "ParentId": -727699,
+      "Position": {
+        "x": 0.0868,
+        "y": 0.0022,
+        "z": 0.03431
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.005,
+        "y": 0.055,
+        "z": 0.06099
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "7E1712FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Blood_Drip",
+      "ObjectId": -727779,
+      "ParentId": -727699,
+      "Position": {
+        "x": 0.02458,
+        "y": -0.0935,
+        "z": 0.0993
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.016,
+        "y": 0.099,
+        "z": 0.005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "6F130FFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    }
+  ]
+}

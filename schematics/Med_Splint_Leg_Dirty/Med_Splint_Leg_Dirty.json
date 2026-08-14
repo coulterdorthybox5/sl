@@ -1,0 +1,221 @@
+{
+  "RootObjectId": -1000189,
+  "Blocks": [
+    {
+      "Name": "Rail_Left",
+      "ObjectId": -1000199,
+      "ParentId": -1000189,
+      "Position": {
+        "x": -0.0908,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.016,
+        "y": 0.26,
+        "z": 0.0953
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9C7B4EFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Rail_Right",
+      "ObjectId": -1000209,
+      "ParentId": -1000189,
+      "Position": {
+        "x": 0.0908,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.016,
+        "y": 0.26,
+        "z": 0.0953
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9C7B4EFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Upper_Front",
+      "ObjectId": -1000219,
+      "ParentId": -1000189,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0832,
+        "z": 0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Upper_Back",
+      "ObjectId": -1000229,
+      "ParentId": -1000189,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0832,
+        "z": -0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Lower_Front",
+      "ObjectId": -1000239,
+      "ParentId": -1000189,
+      "Position": {
+        "x": 0.0,
+        "y": -0.0832,
+        "z": 0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Lower_Back",
+      "ObjectId": -1000249,
+      "ParentId": -1000189,
+      "Position": {
+        "x": 0.0,
+        "y": -0.0832,
+        "z": -0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9A8F76FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Stain_Front",
+      "ObjectId": -1000259,
+      "ParentId": -1000189,
+      "Position": {
+        "x": 0.02765,
+        "y": 0.0015,
+        "z": 0.1043
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.06144,
+        "y": 0.015,
+        "z": 0.004
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "6E6450FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Stain_Side",
+      "ObjectId": -1000269,
+      "ParentId": -1000189,
+      "Position": {
+        "x": -0.0858,
+        "y": 0.0036,
+        "z": 0.02859
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.004,
+        "y": 0.0126,
+        "z": 0.05718
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "77694FFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    }
+  ]
+}

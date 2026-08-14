@@ -1,0 +1,248 @@
+{
+  "RootObjectId": -950527,
+  "Blocks": [
+    {
+      "Name": "Rail_Left",
+      "ObjectId": -950537,
+      "ParentId": -950527,
+      "Position": {
+        "x": -0.0908,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.016,
+        "y": 0.26,
+        "z": 0.0953
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9C7B4EFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Rail_Right",
+      "ObjectId": -950547,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.0908,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.016,
+        "y": 0.26,
+        "z": 0.0953
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "9C7B4EFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Upper_Front",
+      "ObjectId": -950557,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0832,
+        "z": 0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Upper_Back",
+      "ObjectId": -950567,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.0,
+        "y": 0.0832,
+        "z": -0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Lower_Front",
+      "ObjectId": -950577,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.0,
+        "y": -0.0832,
+        "z": 0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Strap_Lower_Back",
+      "ObjectId": -950587,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.0,
+        "y": -0.0832,
+        "z": -0.1013
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.1856,
+        "y": 0.03,
+        "z": 0.014
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "DCD3BEFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Blood_Soak_Front",
+      "ObjectId": -950597,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.03072,
+        "y": 0.0024,
+        "z": 0.1053
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.07373,
+        "y": 0.0186,
+        "z": 0.005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "8E1B14FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Blood_Soak_Side",
+      "ObjectId": -950607,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.0868,
+        "y": 0.0006,
+        "z": 0.03431
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.005,
+        "y": 0.015,
+        "z": 0.06099
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "7E1712FF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    },
+    {
+      "Name": "Blood_Drip",
+      "ObjectId": -950617,
+      "ParentId": -950527,
+      "Position": {
+        "x": 0.02458,
+        "y": -0.0255,
+        "z": 0.0993
+      },
+      "Rotation": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "Scale": {
+        "x": 0.016,
+        "y": 0.027,
+        "z": 0.005
+      },
+      "BlockType": 1,
+      "Properties": {
+        "PrimitiveType": 3,
+        "Color": "6F130FFF",
+        "PrimitiveFlags": 2,
+        "Static": false
+      }
+    }
+  ]
+}

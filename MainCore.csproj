@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- SCP:SL работает на Mono/.NET Framework 4.8, поэтому плагин собирается под net48. -->
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>MainCore</AssemblyName>
+    <RootNamespace>MainCore</RootNamespace>
+    <!-- Ссылки Exiled собраны под AMD64, предупреждение о несоответствии архитектуры не актуально. -->
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
+    <NoWarn>NU1701</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Exiled.Dev.References" Version="1.0.4" />
+    <PackageReference Include="ExMod.Exiled" Version="9.14.2" />
+  </ItemGroup>
+
+  <!--
+    Ссылки на ProjectMER больше нет. Плагин грузит EXILED через Assembly.Load(byte[]),
+    поэтому у сборки MainCore нет Location, и среда не может найти по имени сборку
+    ProjectMER: её грузит другой загрузчик (LabAPI). Любой метод, упоминающий тип
+    ProjectMER, падал с FileNotFoundException прямо при JIT-компиляции - до первой
+    своей строки, из-за чего в консоль не попадало ни одного сообщения.
+    Перевязки теперь собираются из штатных примитивов AdminToys.
+  -->
+
+  <!--
+    Автодеплой в папку плагинов EXILED. Без него легко отладить устаревшую сборку:
+    именно так и вышло - в игре работала DLL трёхмесячной давности.
+    Отключается через: dotnet build -p:DeployToExiled=false
+  -->
+  <Target Name="DeployToExiled" AfterTargets="Build"
+          Condition="'$(DeployToExiled)' != 'false' AND '$(OS)' == 'Windows_NT'">
+    <PropertyGroup>
+      <ExiledPluginsDir>$(AppData)\EXILED\Plugins</ExiledPluginsDir>
+    </PropertyGroup>
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ExiledPluginsDir)"
+          Condition="Exists('$(ExiledPluginsDir)')" ContinueOnError="true" />
+    <Message Importance="high" Text="MainCore -> $(ExiledPluginsDir)"
+             Condition="Exists('$(ExiledPluginsDir)')" />
+  </Target>
+
+</Project>

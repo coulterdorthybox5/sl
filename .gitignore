@@ -1,0 +1,45 @@
+# ---------------------------------------------------------------- build output
+bin/
+obj/
+*.zip
+
+# ---------------------------------------------------------------- посторонние подпроекты
+# Эти папки лежат в той же директории, но к плагину MainCore отношения не имеют.
+llm-gateway/
+qwen-proxy/
+tools/
+
+# ---------------------------------------------------------------- секреты и мусор
+# Токены, ключи и выгрузки не должны попасть в репозиторий ни при каких условиях.
+*.csv
+*.env
+*.env.ps1
+.env.ps1
+.duckdns-token
+*token*
+*.token
+
+# ---------------------------------------------------------------- случайные файлы в корне
+# Всё, что накопилось в корне и не относится к сборке плагина.
+cactus_body.json
+cactus_new.js
+cactus_new2.js
+cactus_site.html
+cactus_v3.js
+cf-chat.json
+cf-health.json
+check.html
+cmd_check_cactus.txt
+docs.html
+docs2.html
+final-health.json
+home.html
+home2.html
+local-health.json
+medical_prompt.txt
+all_code.txt
+nul)
+
+# ---------------------------------------------------------------- IDE
+.vs/
+*.user
