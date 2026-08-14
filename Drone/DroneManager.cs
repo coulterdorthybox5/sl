@@ -652,6 +652,56 @@ namespace MainCore.Drone
                 ? Quaternion.LookRotation(forward, Vector3.up)
                 : Quaternion.identity;
 
+            // DroneForcePrimitiveBody forces the built-in primitive drone and completely bypasses
+            // ProjectMER.  The schematic path can despawn ~1 s after spawn (the symptom the user
+            // sees as the preview "disappearing").  The primitive body is 100 % owned by this
+            // plugin and is tagged against the culler.
+            if (Config.DroneForcePrimitiveBody)
+            {
+                DroneLog.Step("body", "DroneForcePrimitiveBody=true, skipping schematic");
+            }
+            else
+            {
+                Component? body = MapEditorBridge.SpawnSchematic(Config.DroneSchematicName, position, rotation, out string schematicError);
+                if (body != null)
+                {
+                    CaptureBlocks(body, position, rotation, session);
+
+                    if (session.BodyBlocks.Count > 0)
+                    {
+                        session.Body = body;
+                        return true;
+                    }
+
+                    DroneLog.Warn("body", $"schematic '{Config.DroneSchematicName}' had zero AdminToy blocks, using primitive fallback.");
+                    try { UnityEngine.Object.Destroy(body.gameObject); }
+                    catch { /* empty container, harmless */ }
+                }
+                else
+                {
+                    DroneLog.Warn("body", $"schematic '{Config.DroneSchematicName}' not spawned ({schematicError}); using primitive fallback.");
+                }
+            }
+
+            // Fallback / forced primitive
+            if (BuildPrimitiveDrone(position, rotation, session))
+                return true;
+
+            error = "primitive fallback failed";
+            return false;
+        }
+
+        // --- old schematic attempt removed by the forced-primitive edit above ---
+        private static bool __SpawnBody_Original_Schematic_Path_Disabled() { return false; }
+
+        private static bool SpawnBody_Original(Vector3 position, Vector3 forward, DroneSession session, out string error)
+        {
+            error = string.Empty;
+
+            Quaternion rotation = forward.sqrMagnitude > 0.0001f
+                ? Quaternion.LookRotation(forward, Vector3.up)
+                : Quaternion.identity;
+
             Component? body = MapEditorBridge.SpawnSchematic(Config.DroneSchematicName, position, rotation, out string schematicError);
             if (body != null)
             {

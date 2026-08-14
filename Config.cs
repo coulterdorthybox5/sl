@@ -304,6 +304,13 @@ namespace MainCore
         [Description("Drone: name of the ProjectMER schematic used as the drone body.")]
         public string DroneSchematicName { get; set; } = "drone";
 
+        [Description("Drone: if true, the plugin never uses the ProjectMER schematic for the drone body and " +
+                     "always builds the simple primitive drone instead. This completely removes ProjectMER from " +
+                     "the drone lifecycle (ProjectMER can despawn its own schematic ~1s after spawn, which " +
+                     "manifested as the drone 'disappearing'). The primitive body is tagged to survive the " +
+                     "PrimitiveCuller and is 100% owned by this plugin.")]
+        public bool DroneForcePrimitiveBody { get; set; } = true;
+
         [Description("Drone: hit points. The drone explodes when shot or crashed down to zero.")]
         public float DroneHealth { get; set; } = 30f;
 
