@@ -103,7 +103,7 @@ namespace MainCore.CustomItems
                 if (current is not null && Check(current))
                     return;
 
-                DroneManager.CancelPreview(player);
+                DroneManager.CancelPreview(player, "item changed away from radio");
             });
         }
     }

@@ -114,37 +114,39 @@ namespace MainCore
         }
 
         /// <summary>
-        /// ЛКМ по рации приходит как TogglingRadio - именно оно переключает стадии
-        /// дрона: Preview -> Placed -> Piloting -> Placed. Стадию двигаем только здесь,
-        /// а смену волны (<see cref="OnChangingRadioPreset"/>) лишь глушим, чтобы не
-        /// проскочить две стадии за один клик.
+        /// Кнопка рации (в SL это одно из действий по рации) переключает стадии дрона.
+        /// Не известно заранее, какое именно событие Exiled поднимает клик на данной
+        /// сборке, поэтому обрабатываем ОБА - <see cref="OnTogglingRadio"/> и
+        /// <see cref="OnChangingRadioPreset"/> - через один <see cref="HandleRadioKey"/>.
+        /// Двойное срабатывание за один клик гасит дедуп по кулдауну (0.5 с), так что
+        /// один клик = ровно один переход стадии.
         /// </summary>
         public void OnTogglingRadio(TogglingRadioEventArgs ev)
         {
             if (ev.Player is null)
                 return;
 
-            // Именно ЛКМ переключает стадии дрона.
+            DroneLog.Step("event", ev.Player, "TogglingRadio");
+
             if (HandleRadioKey(ev.Player))
                 ev.IsAllowed = false;
         }
 
         /// <summary>
-        /// Смена волны/дальности рации. Стадию дрона здесь НЕ трогаем (это делает
-        /// <see cref="OnTogglingRadio"/> по ЛКМ), только блокируем ванильную смену
-        /// пресета у рации, связанной с дроном.
+        /// Смена волны/дальности рации - второй кандидат на "клик по рации". Тоже
+        /// переключает стадии дрона через общий <see cref="HandleRadioKey"/>; дедуп
+        /// по кулдауну не даст одному клику, поднявшему оба события, проскочить две
+        /// стадии сразу.
         /// </summary>
         public void OnChangingRadioPreset(ChangingRadioPresetEventArgs ev)
         {
             if (ev.Player is null)
                 return;
 
-            if (DroneManager.IsPiloting(ev.Player) ||
-                DroneManager.HasPlaced(ev.Player) ||
-                DroneManager.HasPreview(ev.Player))
-            {
+            DroneLog.Step("event", ev.Player, "ChangingRadioPreset");
+
+            if (HandleRadioKey(ev.Player))
                 ev.IsAllowed = false;
-            }
         }
 
         /// <summary>
@@ -156,8 +158,17 @@ namespace MainCore
         {
             string id = player.UserId ?? player.Nickname ?? string.Empty;
             float now = Time.realtimeSinceStartup;
+
+            DroneLog.Step(
+                "key",
+                player,
+                $"preview={DroneManager.HasPreview(player)} placed={DroneManager.HasPlaced(player)} piloting={DroneManager.IsPiloting(player)}");
+
             if (radioCooldown.TryGetValue(id, out float last) && now - last < RadioCooldownSeconds)
+            {
+                DroneLog.Step("key", player, "deduped (cooldown)");
                 return true; // дубль события за один клик - гасим, но отменяем
+            }
 
             if (DroneManager.IsPiloting(player))
             {

@@ -73,6 +73,9 @@ namespace MainCore.Drone
         /// <summary>Когда в последний раз обновлялась точка превью (для свежести Place).</summary>
         internal float PlacementUpdatedAt { get; set; }
 
+        /// <summary>Когда в последний раз писали диагностику превью (троттлинг лога).</summary>
+        internal float LastDiagAt { get; set; }
+
         /// <summary>Последний применённый цвет света: не переписываем 20 раз в секунду.</summary>
         internal Color? LightColor { get; set; }
 

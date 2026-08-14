@@ -135,7 +135,7 @@ namespace MainCore.Drone
             DroneLog.Step("preview", player, $"shown at {Format(spot)}, blocks={session.BodyBlocks.Count}");
         }
 
-        public static void CancelPreview(Player player)
+        public static void CancelPreview(Player player, string reason = "unspecified")
         {
             if (player is null || !sessions.TryGetValue(player, out DroneSession session))
                 return;
@@ -145,7 +145,7 @@ namespace MainCore.Drone
 
             DestroyBody(session);
             sessions.Remove(player);
-            DroneLog.Step("preview", player, "cancelled");
+            DroneLog.Step("preview", player, $"cancelled ({reason})");
         }
 
         /// <summary>
@@ -572,7 +572,7 @@ namespace MainCore.Drone
 
             if (session.Stage == DroneStage.Preview)
             {
-                CancelPreview(player);
+                CancelPreview(player, $"return control: {reason}");
                 return;
             }
 
@@ -704,6 +704,13 @@ namespace MainCore.Drone
                 if (child.parent != null)
                     child.SetParent(null, true);
 
+                // Дрон постоянно движется и стоит близко к полу/стенам, поэтому
+                // PrimitiveCuller по лучу занятости счёл бы его блоки перекрытыми и
+                // погасил бы Visible - дрон "пропадал" через 1-3 с. Метка выводит
+                // блоки из оптимизации полностью (см. PrimitiveCuller.TagIgnoreFull).
+                if (child.gameObject != null && child.name.IndexOf("[IgnoreOptFull]", StringComparison.OrdinalIgnoreCase) < 0)
+                    child.name += " [IgnoreOptFull]";
+
                 session.BodyBlocks.Add(new DroneBodyBlock
                 {
                     Transform = child,
@@ -750,9 +757,15 @@ namespace MainCore.Drone
         {
             // Без коллайдера (NonCollidable): дрон - только визуал, ловить себя лучами он не должен.
             ToyPrimitive primitive = ToyPrimitive.Create(type, PrimitiveFlags.Visible, null, null, scale, true, color);
+            Transform primitiveTransform = primitive.Base.transform;
+
+            // Выводим блок из PrimitiveCuller: иначе движущийся у пола дрон гасится
+            // как "перекрытый" через 1-3 с (см. PrimitiveCuller.TagIgnoreFull).
+            primitiveTransform.name += " [IgnoreOptFull]";
+
             session.BodyBlocks.Add(new DroneBodyBlock
             {
-                Transform = primitive.Base.transform,
+                Transform = primitiveTransform,
                 Offset = localOffset,
                 Rotation = Quaternion.identity,
                 Scale = scale,
