@@ -95,15 +95,15 @@ namespace MainCore.CustomItems
             }
 
             // Событие иногда приходит с промежуточным null/неактуальным предметом.
+            // Мы отменяем превью ТОЛЬКО если игрок точно взял другой предмет.
+            // Если CurrentItem == null (временное состояние) — ничего не делаем.
             Timing.CallDelayed(0.15f, () =>
             {
                 Item current = player.CurrentItem;
 
-                // Рация всё ещё реально находится в руках - превью не трогаем.
-                if (current is not null && Check(current))
-                    return;
-
-                DroneManager.CancelPreview(player, "item changed away from radio");
+                if (current is not null && !Check(current))
+                    DroneManager.CancelPreview(player, "item changed away from radio");
+                // если current == null или это наша рация — превью остаётся
             });
         }
     }
