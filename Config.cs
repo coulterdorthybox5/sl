@@ -309,7 +309,7 @@ namespace MainCore
                      "the drone lifecycle (ProjectMER can despawn its own schematic ~1s after spawn, which " +
                      "manifested as the drone 'disappearing'). The primitive body is tagged to survive the " +
                      "PrimitiveCuller and is 100% owned by this plugin.")]
-        public bool DroneForcePrimitiveBody { get; set; } = true;
+        public bool DroneForcePrimitiveBody { get; set; } = false;
 
         [Description("Drone: hit points. The drone explodes when shot or crashed down to zero.")]
         public float DroneHealth { get; set; } = 30f;

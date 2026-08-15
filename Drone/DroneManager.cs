@@ -403,6 +403,35 @@ namespace MainCore.Drone
             session.Forward = Flatten(owner.CameraTransform is null ? session.Forward : owner.CameraTransform.forward);
             MoveBody(session);
             SetLight(session, canPlace ? Color.green : Color.red, Config.DroneLightIntensity);
+
+            // === Watchdog: if the schematic body disappeared (ProjectMER despawned it),
+            // re-spawn it so the preview stays alive. This is option 2 the user requested.
+            bool bodyLost = session.BodyBlocks.Count == 0 ||
+                            session.BodyBlocks.TrueForAll(b => b.Transform == null || b.Transform.gameObject == null);
+
+            if (bodyLost)
+            {
+                DroneLog.Step("watchdog", owner, "schematic body lost, attempting re-spawn");
+                DestroyBody(session);
+
+                if (SpawnBody(spot, session.Forward, session, out string err))
+                {
+                    session.Light = SpawnLight(spot);
+                    SetLight(session, canPlace ? Color.green : Color.red, Config.DroneLightIntensity);
+                    DroneLog.Step("watchdog", owner, "re-spawned successfully");
+                }
+                else
+                {
+                    DroneLog.Warn("watchdog", owner, $"re-spawn failed: {err}");
+                    // fall back to primitive if schematic keeps failing
+                    if (BuildPrimitiveDrone(spot, Quaternion.LookRotation(session.Forward, Vector3.up), session))
+                    {
+                        session.Light = SpawnLight(spot);
+                        SetLight(session, canPlace ? Color.green : Color.red, Config.DroneLightIntensity);
+                    }
+                }
+            }
+
             return true;
         }
 
@@ -652,15 +681,9 @@ namespace MainCore.Drone
                 ? Quaternion.LookRotation(forward, Vector3.up)
                 : Quaternion.identity;
 
-            // DroneForcePrimitiveBody forces the built-in primitive drone and completely bypasses
-            // ProjectMER.  The schematic path can despawn ~1 s after spawn (the symptom the user
-            // sees as the preview "disappearing").  The primitive body is 100 % owned by this
-            // plugin and is tagged against the culler.
-            if (Config.DroneForcePrimitiveBody)
-            {
-                DroneLog.Step("body", "DroneForcePrimitiveBody=true, skipping schematic");
-            }
-            else
+            // === FORCED TEST MODE (user chose option 2) ===
+            // Always attempt the schematic first, regardless of the YAML flag.
+            // The watchdog in TickPreview will re-spawn it if ProjectMER despawns it.
             {
                 Component? body = MapEditorBridge.SpawnSchematic(Config.DroneSchematicName, position, rotation, out string schematicError);
                 if (body != null)
