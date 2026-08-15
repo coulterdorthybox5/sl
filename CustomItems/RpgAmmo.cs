@@ -118,20 +118,20 @@ namespace MainCore.CustomItems
             Firearm? launcher = FindLauncher(player);
             if (launcher is null)
             {
-                player.ShowHint("<b>RPG Round:</b> no RPG-7 in your inventory.", 2f);
+
                 return;
             }
 
             if (RpgLauncher.IsLoaded(launcher.Serial))
             {
-                player.ShowHint("<b>RPG-7:</b> already loaded.", 1.5f);
+
                 return;
             }
 
             RpgLauncher.SetLoaded(launcher, true);
 
             player.RemoveItem(round);
-            player.ShowHint("<b>RPG-7:</b> loaded.", 1.5f);
+
         }
 
         private static Firearm? FindLauncher(Player player)

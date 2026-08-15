@@ -171,7 +171,7 @@ namespace MainCore.CustomItems
 
             if (Loaded.Contains(firearm.Serial))
             {
-                player.ShowHint("<b>RPG-7:</b> already loaded.", 1.5f);
+
                 SyncReserveAmmo(player, firearm);
                 return;
             }
@@ -179,14 +179,14 @@ namespace MainCore.CustomItems
             Item? round = FindRound(player);
             if (round is null)
             {
-                player.ShowHint("<b>RPG-7:</b> no RPG rounds left.", 2f);
+
                 SyncReserveAmmo(player, firearm);
                 return;
             }
 
             SetLoaded(firearm, true);
             player.RemoveItem(round);
-            player.ShowHint("<b>RPG-7:</b> loaded.", 1.5f);
+
 
             // Re-sync after the round was spent so the reserve counter matches the
             // remaining rockets and the next reload request is still sent.
@@ -216,7 +216,7 @@ namespace MainCore.CustomItems
             {
                 SetLoaded(firearm, false);
                 SyncReserveAmmo(player, firearm);
-                player.ShowHint("<b>RPG-7:</b> empty. Press R to load a round.", 1.5f);
+
                 return;
             }
 

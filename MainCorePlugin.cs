@@ -3,6 +3,7 @@ using Exiled.API.Enums;
 using Exiled.API.Features;
 using Exiled.CustomItems.API.Features;
 using MainCore.Medical;
+using MainCore.Passive;
 // using MainCore.Medical.Visuals; // ВРЕМЕННО: система видимых ранений отключена
 
 using MapHandlers = Exiled.Events.Handlers.Map;
@@ -67,6 +68,9 @@ namespace MainCore
 
             CustomItem.RegisterItems();
 
+            // Пассивные РП-системы (кровь и т.п.).
+            BloodManager.Subscribe();
+
             // Систему запускает WaitingForPlayers. Здесь достаточно проверить конфиг,
             // чтобы администратор увидел ошибки сразу при загрузке плагина.
             Config.Normalize();
@@ -101,6 +105,8 @@ namespace MainCore
             MapHandlers.ChangedIntoGrenade -= handlers.OnChangedIntoGrenade;
 
             CustomItem.UnregisterItems();
+
+            BloodManager.Unsubscribe();
 
             MedicalManager.Stop();
             MedicalItemManager.Clear();

@@ -125,7 +125,7 @@ namespace MainCore.Drone
             if (!SpawnBody(spot, session.Forward, session, out string error))
             {
                 DroneLog.Warn("preview", player, $"drone body could not be created: {error}");
-                player.ShowHint("<b>FPV Drone:</b> drone model is unavailable, ask an admin.", 3f);
+
                 return;
             }
 
@@ -171,14 +171,14 @@ namespace MainCore.Drone
                     player,
                     $"rejected: canPlace={session.CanPlace}, fresh={fresh}, age={age:0.000}s");
 
-                player.ShowHint("<b>FPV Drone:</b> can't place here.", 1.5f);
+
                 return false;
             }
 
             session.Stage = DroneStage.Placed;
             MoveBody(session);
             StartLightSequence(session);
-            player.ShowHint("<b>FPV Drone:</b> press again to take control.", 2f);
+
             DroneLog.Step("place", player, $"placed on ground at {Format(session.Position)}");
             return true;
         }
@@ -223,7 +223,7 @@ namespace MainCore.Drone
             // Свет НЕ включаем заново: после установки он гаснет по своей корутине и
             // остаётся выключенным на всё время полёта - так задано в ТЗ.
 
-            player.ShowHint("<b>FPV Drone:</b> fly with WASD. Jump/Alt change max speed. Radio to exit.", 4f);
+
             DroneLog.Step("deploy", player, $"drone armed at {Format(session.Position)}");
         }
 

@@ -36,6 +36,7 @@ namespace MainCore
             DestructionManager.Start();
             PrimitiveCuller.Start();
             DroneManager.Start();
+            MainCore.Passive.BloodManager.Reset();
 
             // Серийные номера предметов выдаются заново каждый раунд: старые
             // записи об РПГ могли бы совпасть с новым предметом и он оказался бы
